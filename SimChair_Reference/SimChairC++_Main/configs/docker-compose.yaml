@@ -1,0 +1,26 @@
+services:
+  vrx_app:
+    volumes:
+      - ./ros2_ws:/app/ros2_ws
+    build:
+        context: ./
+        dockerfile: Dockerfile.vrx
+
+    #command: "python3 test_comms_node.py"
+
+    # volumes
+    # ros2_ws:
+    network_mode: service:husarnet
+  husarnet:
+      image: husarnet/husarnet
+      restart: unless-stopped
+      volumes:
+          - /var/lib/husarnet  # This will persist your Husarnet Client keys, thus IP of the container will be stable/the same between (re)boots
+      sysctls:
+          - net.ipv6.conf.all.disable_ipv6=0  # Husarnet is using IPv6 for the internal connections
+      cap_add:
+          - NET_ADMIN
+      devices:
+          - /dev/net/tun
+      env_file: 
+          - ./.env  # create .env file in the same folder as Dockerfile and specify HOSTNAME and JOINCODE there

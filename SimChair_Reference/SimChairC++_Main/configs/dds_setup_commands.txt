@@ -1,0 +1,12 @@
+#Run these commands in cmd, #path=C:\Users\VRX 226\cpp_agv
+
+set RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+set FASTRTPS_DEFAULT_PROFILES_FILE=C:\Users\VRX 226\cpp_agv\husarnet-fastdds-simple.xml
+husarnet-dds singleshot
+
+
+#Join husarnet
+
+husarnet join \
+fc94:b01d:1803:8dd8:b293:5c7d:7639:932a/ZaGSYpDRGEf8fcbH7Ju29F \
+vrx_226_lab

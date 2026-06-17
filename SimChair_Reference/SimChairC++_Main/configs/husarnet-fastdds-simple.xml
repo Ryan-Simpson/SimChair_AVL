@@ -1,0 +1,76 @@
+
+<?xml version="1.0" encoding="UTF-8" ?>
+<dds>
+  <profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+    <transport_descriptors>
+      <transport_descriptor>
+        <transport_id>udpv6_transport</transport_id>
+        <type>UDPv6</type>
+        <maxInitialPeersRange>40</maxInitialPeersRange>
+        <!-- <non_blocking_send>true</non_blocking_send> -->
+      </transport_descriptor>
+    </transport_descriptors>
+    <participant profile_name="husarnet_simple_profile" is_default_profile="true">
+      <rtps>
+        <userTransports>
+          <transport_id>udpv6_transport</transport_id>
+        </userTransports>
+        <useBuiltinTransports>true</useBuiltinTransports>
+        <defaultUnicastLocatorList>
+          <locator>
+            <udpv6>
+              <address>fc94:8bbe:bd0:955c:4a8c:e198:672b:97b9</address>
+            </udpv6>
+          </locator>
+        </defaultUnicastLocatorList>
+        <builtin>
+          <initialPeersList>
+            <locator>
+              <udpv6>
+                <address>fc94:e2f7:1e8f:f347:375a:e7ea:998b:bc37</address>
+              </udpv6>
+            </locator>
+            <locator>
+              <udpv6>
+                <address>fc94:d6d2:af3f:b3a3:619f:fc97:e08b:e9a9</address>
+              </udpv6>
+            </locator>
+            <locator>
+              <udpv6>
+                <address>fc94:8bbe:bd0:955c:4a8c:e198:672b:97b9</address>
+              </udpv6>
+            </locator>
+            <locator>
+              <udpv6>
+                <address>fc94:0076:65ce:dd08:0995:f363:b1a4:663a</address>
+              </udpv6>
+            </locator>
+            <locator>
+              <udpv6>
+                <address>fc94:5e4e:e4b7:b82f:3849:b2b2:6095:360c</address>
+              </udpv6>
+            </locator>
+            <locator>
+              <udpv6>
+                <address>fc94:8bbe:bd0:955c:4a8c:e198:672b:97b9</address>
+              </udpv6>
+            </locator>
+            <locator>
+              <udpv6>
+                <address>fc94:8bbe:bd0:955c:4a8c:e198:672b:97b9</address>
+              </udpv6>
+            </locator>
+          </initialPeersList>
+          <metatrafficUnicastLocatorList>
+            <locator>
+              <udpv6>
+                <address>fc94:8bbe:bd0:955c:4a8c:e198:672b:97b9</address>
+              </udpv6>
+            </locator>
+          </metatrafficUnicastLocatorList>
+        </builtin>
+      </rtps>
+    </participant>
+  </profiles>
+</dds>
+
