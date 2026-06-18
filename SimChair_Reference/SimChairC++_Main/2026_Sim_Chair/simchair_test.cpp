@@ -4,7 +4,7 @@
 #include <thread>
 #include <chrono>
 
-#pragma comment(lib, DBOX_LIVEMOTION_LIB)i
+#pragma comment(lib, DBOX_LIVEMOTION_LIB)
 
 #define APP_KEY "TestChair"
 #define APP_BUILD 1000
