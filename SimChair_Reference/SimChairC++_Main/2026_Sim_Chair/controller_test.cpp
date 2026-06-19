@@ -4,13 +4,13 @@
 #include <iomanip>
 #include <iostream>
 
-static float axisToFloat(Sint16 value) {
+static double axisToDouble(int value) {
     // SDL raw joystick axes are usually -32768 to +32767.
     // Convert to approximately -1.0 to +1.0.
     if (value < 0) {
-        return static_cast<float>(value) / 32768.0f;
+        return static_cast<double>(value) / 32768.0;
     }
-    return static_cast<float>(value) / 32767.0f;
+    return static_cast<double>(value) / 32767.0;
 }
 
 int main() {
@@ -38,10 +38,16 @@ int main() {
     std::cout << "Buttons: " << SDL_JoystickNumButtons(controller) << '\n';
     std::cout << "Hats: " << SDL_JoystickNumHats(controller) << '\n';
 
-    const Uint32 shift_debounce_ms = 250;
-
     bool running {true};
 
+    static int steering_raw;
+    static int throttle_raw;
+    static int brake_raw;
+    static double steering;
+    static double throttle;
+    static double brake;
+    static double throttle_norm;
+    static double brake_norm;
     while (running) {
         SDL_Event event;
 
@@ -62,22 +68,22 @@ int main() {
 
         SDL_JoystickUpdate();
 
-        Uint32 now = SDL_GetTicks();
+        int now = SDL_GetTicks();
 
         // steering = controller.get_axis(0)
         // throttle = controller.get_axis(6)
         // brake = controller.get_axis(1)
-        Sint16 steering_raw = SDL_JoystickGetAxis(controller, 0);
-        Sint16 throttle_raw = SDL_JoystickGetAxis(controller, 6);
-        Sint16 brake_raw = SDL_JoystickGetAxis(controller, 1);
+        steering_raw = SDL_JoystickGetAxis(controller, 0);
+        throttle_raw = SDL_JoystickGetAxis(controller, 6);
+        brake_raw = SDL_JoystickGetAxis(controller, 1);
 
-        float steering = axisToFloat(steering_raw);
-        float throttle = axisToFloat(throttle_raw);
-        float brake = axisToFloat(brake_raw);
+        steering = axisToDouble(steering_raw);
+        throttle = axisToDouble(throttle_raw);
+        brake = axisToDouble(brake_raw);
 
         // Safer clamp, in case the device behaves strangely.
-        float throttle_norm = std::clamp(throttle_norm, 0.0f, 1.0f);
-        float brake_norm = std::clamp(brake_norm, 0.0f, 1.0f);
+        throttle_norm = std::clamp(throttle_norm, 0.0, 1.0);
+        brake_norm = std::clamp(brake_norm, 0.0, 1.0);
 
         std::cout << std::fixed << std::setprecision(2)
                   << "S: " << steering << '\n'
