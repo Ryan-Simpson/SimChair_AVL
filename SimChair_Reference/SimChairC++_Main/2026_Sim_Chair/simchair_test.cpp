@@ -1,10 +1,13 @@
 #include <cstdio>
-#include "LiveMotion/dboxLiveMotion.h"
+#include "include\dboxLiveMotion.h"
 #include <Windows.h>
 #include <thread>
+#include <iostream>
 #include <chrono>
 
 #pragma comment(lib, DBOX_LIVEMOTION_LIB)
+#pragma comment(lib, "Shell32.lib")
+
 
 #define APP_KEY "TestChair"
 #define APP_BUILD 1000
@@ -53,11 +56,11 @@ int main()
 	  dbox::LiveMotion::Start();
 
 	  RaceTelemetry oTelemetry;
-	  oTelemetry.PitchRad = 3.1415/6;
+	  oTelemetry.PitchRad = pi/6;
 	  
 	  dbox::LiveMotion::PostEvent(RACE_TELEMETRY, oTelemetry);
 	  
-    std::this_thread::sleep_for(2s);
+	  std::this_thread::sleep_for(2s);
 
 	  dbox::LiveMotion::Stop();
 
