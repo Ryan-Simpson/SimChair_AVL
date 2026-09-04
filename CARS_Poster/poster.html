@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>CARS 2026 — Sim Chair Teleoperation Poster</title>
+<style>
+  /* Print target: 48 in × 36 in (4 ft × 3 ft) landscape */
+  @page { size: 48in 36in; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --cpp-green: #1B4D3E;
+    --cpp-green-dark: #0F3329;
+    --cpp-gold: #C4B581;
+    --bg: #E8E8E8;
+    --text: #1a1a1a;
+    --muted: #444;
+    --ok: #1B7A4A;
+    --partial: #B8860B;
+    --no: #A33;
+    --white: #fff;
+  }
+  html, body {
+    width: 48in;
+    height: 36in;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Times New Roman", Times, Georgia, serif;
+    font-size: 18pt;
+    line-height: 1.28;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .poster {
+    width: 48in;
+    height: 36in;
+    display: flex;
+    flex-direction: column;
+    padding: 0.35in 0.45in 0.35in;
+    gap: 0.22in;
+  }
+
+  /* —— Header —— */
+  .header {
+    background: var(--cpp-green);
+    color: var(--white);
+    display: grid;
+    grid-template-columns: 2.4in 1fr 2.6in;
+    align-items: center;
+    gap: 0.35in;
+    padding: 0.28in 0.4in;
+    min-height: 3.1in;
+  }
+  .header .logo-cpp {
+    height: 2.35in;
+    width: auto;
+    object-fit: contain;
+    justify-self: start;
+  }
+  .header .logo-avl {
+    height: 1.55in;
+    width: auto;
+    max-width: 2.5in;
+    object-fit: contain;
+    justify-self: end;
+  }
+  .header-text { text-align: center; }
+  .header-text h1 {
+    font-size: 42pt;
+    font-weight: 700;
+    line-height: 1.12;
+    letter-spacing: 0.01em;
+    margin-bottom: 0.12in;
+  }
+  .header-text .authors {
+    font-size: 20pt;
+    margin-bottom: 0.08in;
+  }
+  .header-text .affil {
+    font-size: 16pt;
+    font-style: italic;
+    opacity: 0.95;
+  }
+
+  /* —— Body columns —— */
+  .body {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.28in;
+    min-height: 0;
+  }
+  .col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2in;
+    min-width: 0;
+  }
+  .section {
+    background: transparent;
+  }
+  .section-bar {
+    background: var(--cpp-green);
+    color: var(--white);
+    text-align: center;
+    font-size: 20pt;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 0.07in 0.12in;
+    margin-bottom: 0.12in;
+  }
+  .section p, .section li {
+    text-align: justify;
+    font-size: 15.5pt;
+    margin-bottom: 0.08in;
+  }
+  .section ul { padding-left: 0.28in; }
+  .section li { margin-bottom: 0.05in; }
+
+  .figure {
+    background: #f4f4f4;
+    border: 1px solid #bbb;
+    padding: 0.1in;
+    text-align: center;
+  }
+  .figure svg, .figure img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .caption {
+    font-size: 12.5pt;
+    font-weight: 700;
+    text-align: left;
+    margin-top: 0.06in;
+    line-height: 1.2;
+  }
+  .placeholder-fig {
+    min-height: 2.4in;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ddd;
+    color: #555;
+    font-size: 14pt;
+    font-style: italic;
+    border: 1px dashed #999;
+  }
+
+  /* Status table */
+  table.status {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5pt;
+    margin-top: 0.05in;
+  }
+  table.status th, table.status td {
+    border: 1px solid #999;
+    padding: 0.05in 0.07in;
+    vertical-align: top;
+    text-align: left;
+  }
+  table.status th {
+    background: var(--cpp-green);
+    color: white;
+    font-size: 12pt;
+  }
+  table.status tr:nth-child(even) td { background: #f0f0f0; }
+  .badge {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 11pt;
+    padding: 0.01in 0.06in;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .badge.ok { background: #d4edda; color: var(--ok); }
+  .badge.wip { background: #fff3cd; color: #856404; }
+  .badge.no { background: #f8d7da; color: var(--no); }
+
+  .refs { font-size: 11.5pt; line-height: 1.25; }
+  .refs li { margin-bottom: 0.04in; text-align: left; }
+  .ack p { font-size: 14pt; }
+
+  .tech-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.06in 0.12in;
+    font-size: 13pt;
+    margin-top: 0.06in;
+  }
+  .tech-grid strong { color: var(--cpp-green-dark); }
+
+  .pipeline-note {
+    font-size: 13pt;
+    font-style: italic;
+    color: var(--muted);
+    margin-top: 0.06in;
+  }
+</style>
+</head>
+<body>
+<div class="poster">
+
+  <!-- HEADER -->
+  <header class="header">
+    <img class="logo-cpp" src="assets/cpp_logo_white.png" alt="Cal Poly Pomona" />
+    <div class="header-text">
+      <h1>Haptic Sim-Chair-Based Teleoperation System<br/>for Autonomous Vehicle Platforms</h1>
+      <div class="authors">Ryan Simpson, Tyler Carrasco, Yi-Szen Tang, Kevin Xu, Justin Dang, Dr. Behnam Bahr</div>
+      <div class="affil">Autonomous Vehicles Laboratory, California State Polytechnic University, Pomona</div>
+    </div>
+    <img class="logo-avl" src="assets/avl_logo_transparent.png" alt="AVL" />
+  </header>
+
+  <!-- BODY -->
+  <div class="body">
+
+    <!-- COL 1 -->
+    <div class="col">
+      <section class="section">
+        <div class="section-bar">Abstract</div>
+        <p>
+          Remote operation of ground vehicles presents fundamental challenges in situational awareness.
+          An operator who is not physically present loses sensory feedback that enables precise, confident
+          driving—including peripheral vision and the perception of acceleration. Conventional teleoperation
+          systems provide only a flat video feed, limiting effectiveness in hazardous-environment operations
+          and safety intervention for autonomous vehicles.
+        </p>
+        <p>
+          The Cal Poly Pomona Autonomous Vehicles Lab has developed a bidirectional haptic teleoperation
+          system that restores this missing feedback. The test platform carries three ZED X stereo cameras
+          and an Xsens MTi-680G IMU, managed by an onboard NVIDIA Jetson Orin. The operator sits in a D-BOX
+          motion-enabled simulation chair with a Thrustmaster racing wheel and pedals, facing three monitors
+          that reproduce a driver’s natural field of view. Steering and pedal inputs are sent to the vehicle
+          in real time, while measured accelerations drive the motion chair so the operator feels the forces
+          acting on the vehicle.
+        </p>
+        <p>
+          All communication runs over a Tailscale VPN rather than line-of-sight radio, so the operator and
+          vehicle can be separated by any distance. This poster presents the system architecture, engineering
+          challenges of low-latency video and control over the internet, and applications of immersive
+          teleoperation to autonomous vehicle development.
+        </p>
+      </section>
+
+      <section class="section">
+        <div class="section-bar">Introduction</div>
+        <p>
+          When a driver operates a vehicle remotely, they lose the cues that make driving intuitive—wide
+          peripheral vision, body motion, and the feel of acceleration. That loss makes remote driving slower,
+          less precise, and more fatiguing, which limits use in hazardous environments, remote recovery, and
+          autonomy safety backup.
+        </p>
+        <p>
+          This project restores those senses through a bidirectional haptic teleoperation system. Three
+          coupled channels run over Tailscale VPN:
+        </p>
+        <ul>
+          <li><strong>Vision</strong> — panoramic live video from three vehicle-mounted ZED X cameras</li>
+          <li><strong>Control</strong> — low-latency wheel and pedal commands to differential drive</li>
+          <li><strong>Haptics</strong> — IMU accelerations mapped through a washout filter into D-BOX chair motion</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <div class="section-bar">Objectives</div>
+        <ul>
+          <li>Under 150&nbsp;ms median glass-to-glass camera latency</li>
+          <li>Smooth, natural remote driving feel comparable to manual control</li>
+          <li>Real vehicle G-forces (accel, brake, cornering) felt in the D-BOX chair</li>
+          <li>Verified full simultaneous operation: cameras + controls + haptic chair</li>
+        </ul>
+      </section>
+    </div>
+
+    <!-- COL 2 -->
+    <div class="col">
+      <section class="section">
+        <div class="section-bar">System Architecture</div>
+        <p>
+          Three parallel pipelines connect the Windows sim-chair station to the vehicle’s NVIDIA Jetson Orin
+          (Ubuntu 22.04, ROS&nbsp;2 Humble).
+        </p>
+        <div class="figure">
+          <!-- Architecture flowchart -->
+          <svg viewBox="0 0 520 420" xmlns="http://www.w3.org/2000/svg" font-family="Times New Roman, serif">
+            <defs>
+              <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="#1B4D3E"/>
+              </marker>
+            </defs>
+            <!-- Boxes -->
+            <rect x="10" y="10" width="150" height="70" rx="4" fill="#1B4D3E"/>
+            <text x="85" y="38" fill="#fff" text-anchor="middle" font-size="13" font-weight="700">Operator Station</text>
+            <text x="85" y="56" fill="#C4B581" text-anchor="middle" font-size="11">Wheel · Pedals · D-BOX</text>
+            <text x="85" y="70" fill="#C4B581" text-anchor="middle" font-size="11">3× Monitors</text>
+
+            <rect x="360" y="10" width="150" height="70" rx="4" fill="#1B4D3E"/>
+            <text x="435" y="38" fill="#fff" text-anchor="middle" font-size="13" font-weight="700">Marvin (Kart)</text>
+            <text x="435" y="56" fill="#C4B581" text-anchor="middle" font-size="11">Jetson Orin · Teensy</text>
+            <text x="435" y="70" fill="#C4B581" text-anchor="middle" font-size="11">ZED×3 · Xsens IMU</text>
+
+            <rect x="185" y="25" width="150" height="40" rx="4" fill="#C4B581"/>
+            <text x="260" y="50" fill="#0F3329" text-anchor="middle" font-size="13" font-weight="700">Tailscale VPN</text>
+
+            <!-- Control path -->
+            <rect x="40" y="120" width="440" height="78" rx="4" fill="#fff" stroke="#1B4D3E" stroke-width="2"/>
+            <text x="50" y="142" fill="#1B4D3E" font-size="13" font-weight="700">Control  →  UDP :5006</text>
+            <text x="50" y="162" fill="#333" font-size="12">SDL2 → simchair_sender → orin_vehicle_controller</text>
+            <text x="50" y="180" fill="#333" font-size="12">→ Teensy 4.1 → Spark MAX → motors</text>
+
+            <!-- Video path -->
+            <rect x="40" y="215" width="440" height="78" rx="4" fill="#fff" stroke="#1B4D3E" stroke-width="2"/>
+            <text x="50" y="237" fill="#1B4D3E" font-size="13" font-weight="700">Video  ←  TCP :9001–9003  (JPEG v1)</text>
+            <text x="50" y="257" fill="#333" font-size="12">ZED X → ROS2 compressed → orin_camera_sender</text>
+            <text x="50" y="275" fill="#333" font-size="12">→ 3-monitor panoramic display · H.265 path coded</text>
+
+            <!-- Haptic path -->
+            <rect x="40" y="310" width="440" height="90" rx="4" fill="#fff" stroke="#1B4D3E" stroke-width="2"/>
+            <text x="50" y="332" fill="#1B4D3E" font-size="13" font-weight="700">Haptics  ←  UDP :5007  (Phase 3)</text>
+            <text x="50" y="352" fill="#333" font-size="12">Xsens / ZED IMU → imu_bridge @ 50 Hz</text>
+            <text x="50" y="370" fill="#333" font-size="12">→ WashoutFilter → ImuHapticReceiver → D-BOX</text>
+            <text x="50" y="388" fill="#856404" font-size="11">Coded — deploy + tune remaining</text>
+          </svg>
+          <div class="caption">Figure 1. Bidirectional teleoperation pipelines: control, video, and haptics over Tailscale.</div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-bar">Methodology</div>
+        <ul>
+          <li><strong>Control:</strong> Wheel/pedals via SDL2 → UDP over Tailscale → Jetson differential-drive mixing → Teensy 4.1 → Spark MAX. Protocol v2 adds sequence numbers, timestamps, and a 300&nbsp;ms watchdog with latched STOPPED.</li>
+          <li><strong>Video:</strong> ZED X → ROS&nbsp;2 compressed JPEG → TCP at 960×600 @ 15&nbsp;fps to three panoramic monitors. H.265 / ZED stream_server path coded for lower latency.</li>
+          <li><strong>Haptics:</strong> Classical washout (LPF tilt + HPF heave) maps accel/rate into comfort-scaled D-BOX cues; packet loss ramps the chair to neutral.</li>
+        </ul>
+        <p style="font-size:13.5pt; margin-top:0.08in;">
+          <strong>Technologies:</strong> Jetson Orin · ROS&nbsp;2 Humble · ZED&nbsp;X ×3 · Xsens MTi-680G · D-BOX LiveMotion · Tailscale · SDL2 · Python / C++
+        </p>
+      </section>
+    </div>
+
+    <!-- COL 3 -->
+    <div class="col">
+      <section class="section">
+        <div class="section-bar">Status</div>
+        <table class="status">
+          <thead>
+            <tr>
+              <th style="width:28%">Capability</th>
+              <th style="width:18%">Status</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Remote driving (wheel/pedals)</td>
+              <td><span class="badge ok">Working</span></td>
+              <td>v1 protocol live; v2 controller coded — needs sender rebuild + deploy</td>
+            </tr>
+            <tr>
+              <td>Three live camera streams</td>
+              <td><span class="badge ok">Working</span></td>
+              <td>JPEG/TCP 960×600 @ 15&nbsp;fps; H.265 receiver coded — needs ZED stream_server on Jetson</td>
+            </tr>
+            <tr>
+              <td>D-BOX SDK</td>
+              <td><span class="badge ok">Ready</span></td>
+              <td>Sine test works; WashoutFilter + ImuHapticReceiver coded — needs build</td>
+            </tr>
+            <tr>
+              <td>Real vehicle motion in chair</td>
+              <td><span class="badge no">Not wired</span></td>
+              <td>imu_bridge + C++ receiver coded — needs deploy + tune</td>
+            </tr>
+            <tr>
+              <td>Smooth natural control</td>
+              <td><span class="badge no">Degrading</span></td>
+              <td>Motor debug plan — hardware A/B still required</td>
+            </tr>
+            <tr>
+              <td>Full simultaneous demo</td>
+              <td><span class="badge no">Unverified</span></td>
+              <td>Ops templates ready — needs cold-boot rehearsal + soak test</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section">
+        <div class="section-bar">Results</div>
+        <p>Baseline measurements (2026-07-27, Tailscale DERP path between sim chair and Jetson):</p>
+        <ul>
+          <li>Round-trip latency typically <strong>~95–150&nbsp;ms</strong> (direct LAN path deferred)</li>
+          <li>Front ZED ROS topic ≈ <strong>27&nbsp;Hz</strong> raw; display sender capped at <strong>15&nbsp;fps</strong> JPEG</li>
+          <li>Control UDP :5006 fully operational; haptic UDP :5007 implemented in software</li>
+        </ul>
+        <div class="figure">
+          <div class="placeholder-fig">[ Photo: operator station — D-BOX + 3 monitors + wheel ]</div>
+          <div class="caption">Figure 2. Sim-chair operator station (placeholder — insert photo before print).</div>
+        </div>
+        <div class="figure" style="margin-top:0.12in;">
+          <div class="placeholder-fig">[ Photo: Marvin with ZED ×3 / Jetson ]</div>
+          <div class="caption">Figure 3. Vehicle platform sensor suite (placeholder — insert photo before print).</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- COL 4 -->
+    <div class="col">
+      <section class="section">
+        <div class="section-bar">Next Steps</div>
+        <ul>
+          <li><strong>Video:</strong> enable ZED H.265 stream_server; measure glass-to-glass latency vs JPEG fallback</li>
+          <li><strong>Control:</strong> rebuild/deploy v2 sender; Teensy watchdog firmware; motor controller A/B tests</li>
+          <li><strong>Haptics:</strong> build ImuHapticReceiver; deploy imu_bridge; comfort-scale tuning on stands</li>
+          <li><strong>Ops:</strong> cold-boot rehearsal and soak test to verify cameras + controls + chair together</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <div class="section-bar">Conclusion</div>
+        <p>
+          A working remote-driving link and live three-camera panoramic video are in place today.
+          Motion-chair haptics and driving smoothness remain the main integration milestones. Completing
+          the IMU → washout → D-BOX path and verifying a full simultaneous run will demonstrate a low-cost,
+          internet-scale immersive teleoperation stack built on consumer simulation hardware and an AVL
+          robotics platform—supporting hazardous-environment ops and autonomy safety intervention.
+        </p>
+      </section>
+
+      <section class="section ack">
+        <div class="section-bar">Acknowledgements</div>
+        <p>
+          We thank the Cal Poly Pomona Autonomous Vehicles Laboratory and Dr. Behnam Bahr for faculty
+          mentorship, and AVL teammates who support Jetson bring-up, vehicle integration, and lab operations.
+        </p>
+      </section>
+
+      <section class="section">
+        <div class="section-bar">References</div>
+        <ol class="refs">
+          <li>Stereolabs. <em>ZED SDK Documentation.</em> https://www.stereolabs.com/docs</li>
+          <li>D-BOX Technologies. <em>LiveMotion / Motion Code SDK.</em></li>
+          <li>Classical washout filter / motion-cueing literature (flight simulation).</li>
+          <li>Open Robotics. <em>ROS 2 Humble Documentation.</em> https://docs.ros.org/en/humble/</li>
+          <li>Tailscale Inc. <em>Tailscale Networking Overview.</em></li>
+          <li>NVIDIA. <em>Jetson Orin Developer Guide.</em></li>
+          <li>Xsens / Movella. <em>MTi-680G IMU Product Documentation.</em></li>
+          <li>SDL. <em>Simple DirectMedia Layer 2.</em> https://www.libsdl.org/</li>
+        </ol>
+      </section>
+
+      <section class="section">
+        <div class="section-bar">Contact</div>
+        <p style="font-size:14pt;">
+          Autonomous Vehicles Laboratory · Cal Poly Pomona<br/>
+          CARS 2026 · Thursday, August 6, 2026 · Bronco Student Center
+        </p>
+      </section>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

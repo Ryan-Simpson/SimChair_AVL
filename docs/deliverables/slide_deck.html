@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Marvin Sim Chair: AVL Summer Cohort 2026</title>
+  <style>
+    :root {
+      --bg: #0f1f1a;
+      --panel: #1b4d3e;
+      --gold: #c4b581;
+      --text: #f3f0e6;
+      --muted: #b8c4bc;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+      font-family: "Segoe UI", Candara, Calibri, sans-serif; }
+    .deck { height: 100%; overflow: hidden; }
+    .slide {
+      display: none; height: 100%; padding: 48px 64px;
+      background: radial-gradient(1200px 600px at 10% 0%, #243f35 0%, var(--bg) 55%);
+      flex-direction: column; justify-content: center;
+    }
+    .slide.active { display: flex; }
+    .slide.cover { align-items: flex-start; justify-content: flex-end; padding-bottom: 80px;
+      background: linear-gradient(135deg, #0f1f1a 0%, #1b4d3e 55%, #0f1f1a 100%); }
+    h1 { font-size: 2.6rem; margin: 0 0 0.4rem; letter-spacing: 0.02em; }
+    h2 { font-size: 1.5rem; color: var(--gold); font-weight: 600; margin: 0 0 1.2rem; }
+    p, li { font-size: 1.25rem; line-height: 1.45; color: var(--text); }
+    ul, ol { margin: 0.4rem 0 0 1.2rem; }
+    .muted { color: var(--muted); }
+    .bar { height: 6px; width: 120px; background: var(--gold); margin: 1rem 0 1.5rem; }
+    table { border-collapse: collapse; width: 100%; max-width: 900px; font-size: 1.05rem; }
+    th, td { border-bottom: 1px solid #355a4c; padding: 0.55rem 0.7rem; text-align: left; }
+    th { color: var(--gold); font-weight: 600; }
+    pre {
+      background: #122821; border: 1px solid #355a4c; padding: 1rem 1.2rem;
+      border-radius: 8px; font-size: 0.95rem; overflow: auto; max-width: 980px;
+      color: #e8e2d0; line-height: 1.4;
+    }
+    code { font-family: Consolas, monospace; font-size: 0.95em; }
+    .footer {
+      position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 24px;
+      display: flex; justify-content: space-between; color: var(--muted); font-size: 0.85rem;
+      background: rgba(0,0,0,0.25);
+    }
+    .hint { position: fixed; top: 12px; right: 18px; color: var(--muted); font-size: 0.8rem; }
+    .tag { display: inline-block; background: var(--panel); color: var(--gold);
+      padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.9rem; margin-bottom: 0.8rem; }
+  </style>
+</head>
+<body>
+  <div class="hint">← → or space · Home/End</div>
+  <div class="deck" id="deck">
+
+    <section class="slide cover active">
+      <div class="tag">AVL Summer Cohort 2026</div>
+      <h1>Haptic Sim-Chair Teleoperation</h1>
+      <h2>for Autonomous Vehicle Platforms</h2>
+      <div class="bar"></div>
+      <p>Ryan Simpson · Tyler Carrasco · Yi-Szen Tang · Kevin Xu · Justin Dang</p>
+      <p class="muted">Mentor: Dr. Behnam Bahr · Cal Poly Pomona Autonomous Vehicles Lab</p>
+      <p class="muted">August 7, 2026</p>
+    </section>
+
+    <section class="slide">
+      <h1>Agenda</h1>
+      <div class="bar"></div>
+      <ol>
+        <li>Project overview</li>
+        <li>Technical architecture</li>
+        <li>Methodology</li>
+        <li>Challenges and solutions</li>
+        <li>Results and metrics</li>
+        <li>Demo summary</li>
+        <li>Future work</li>
+        <li>Handoff</li>
+      </ol>
+    </section>
+
+    <section class="slide">
+      <h1>Overview: The Problem</h1>
+      <div class="bar"></div>
+      <p>Remote drivers lose the cues that make driving intuitive:</p>
+      <ul>
+        <li>Peripheral vision and depth</li>
+        <li>Body motion / acceleration feel</li>
+        <li>Confident, precise control</li>
+      </ul>
+      <p style="margin-top:1.2rem">Flat single-camera teleop is not enough for hazardous sites or AV safety intervention.</p>
+    </section>
+
+    <section class="slide">
+      <h1>Overview: Our Solution</h1>
+      <div class="bar"></div>
+      <p><strong>Marvin</strong> go-kart ↔ <strong>D-BOX sim chair</strong> over <strong>Tailscale VPN</strong></p>
+      <table>
+        <tr><th>Channel</th><th>What it restores</th></tr>
+        <tr><td>Vision</td><td>3× ZED X → 3 panoramic monitors</td></tr>
+        <tr><td>Control</td><td>Thrustmaster wheel/pedals → differential drive</td></tr>
+        <tr><td>Haptics</td><td>IMU → D-BOX (bridge ready; E2E verify next)</td></tr>
+      </table>
+    </section>
+
+    <section class="slide">
+      <h1>Overview: Current Status</h1>
+      <div class="bar"></div>
+      <table>
+        <tr><th>Capability</th><th>Status</th></tr>
+        <tr><td>Wheel/pedal remote drive</td><td>Working</td></tr>
+        <tr><td>3-camera live JPEG video</td><td>Working (UDP primary)</td></tr>
+        <tr><td>D-BOX SDK on Windows</td><td>Working</td></tr>
+        <tr><td>Vehicle IMU → chair E2E</td><td>Script ready: verify live</td></tr>
+        <tr><td>Motor sustained quality</td><td>Open issue</td></tr>
+      </table>
+    </section>
+
+    <section class="slide">
+      <h1>Technical Architecture</h1>
+      <div class="bar"></div>
+      <pre>OPERATOR (Windows)           TAILSCALE              VEHICLE (Jetson)
+Wheel/Pedals --> UDP :5006 --------------------> controller -> Teensy -> Motors
+3 Monitors   <-- UDP :9001-3 <------------------ ZED X x3 -> camera_sender_udp
+D-BOX        <-- UDP :5007 <-------------------- IMU bridge (Xsens)
+Status       <-- UDP :5008 <-------------------- controller status</pre>
+      <p class="muted">Primary video: chunked JPEG over UDP (~1280×720 @ 30). TCP JPEG is legacy fallback.</p>
+    </section>
+
+    <section class="slide">
+      <h1>Technical Architecture: Stack</h1>
+      <div class="bar"></div>
+      <ul>
+        <li><strong>Operator:</strong> Windows · SDL2 · OpenCV · D-BOX · Tailscale 100.91.25.107</li>
+        <li><strong>Vehicle:</strong> Jetson Orin · ROS 2 Humble · CycloneDDS · domain 42 · 100.93.121.3</li>
+        <li><strong>Actuation:</strong> Teensy 4.1 → REV Spark MAX</li>
+        <li><strong>Key apps:</strong> simchair_sender_dbox.exe · orin_vehicle_controller.py · orin_camera_sender_udp.py · imu_bridge.py · windows_camera_receiver_udp.py</li>
+      </ul>
+    </section>
+
+    <section class="slide">
+      <h1>Methodology</h1>
+      <div class="bar"></div>
+      <ol>
+        <li>Keep teleop outside shared IGVC tree (read-only)</li>
+        <li>Prefer reliable demo path (UDP JPEG; TCP fallback) over unfinished codecs</li>
+        <li>Forward ZED topics / encode JPEG without unnecessary rework</li>
+        <li>Stagger ZED launches; unset DISPLAY; TF/URDF on</li>
+        <li>OpenCV display on main thread only (Windows)</li>
+        <li>Measure Tailscale RTT + glass-to-glass stopwatch</li>
+      </ol>
+    </section>
+
+    <section class="slide">
+      <h1>Challenges &amp; Solutions</h1>
+      <div class="bar"></div>
+      <table>
+        <tr><th>Challenge</th><th>Solution</th></tr>
+        <tr><td>ZED EGL / Argus crash</td><td>Real unset DISPLAY</td></tr>
+        <tr><td>No frames / TF hang</td><td>publish_tf + publish_urdf true</td></tr>
+        <tr><td>Dual ZED stacks fight</td><td>One stack only</td></tr>
+        <tr><td>Multi-cam crash</td><td>25 s stagger</td></tr>
+        <tr><td>OpenCV blank windows</td><td>Main-thread imshow</td></tr>
+      </table>
+    </section>
+
+    <section class="slide">
+      <h1>Challenges &amp; Solutions (cont.)</h1>
+      <div class="bar"></div>
+      <table>
+        <tr><th>Challenge</th><th>Solution</th></tr>
+        <tr><td>GStreamer RTSP unreliable</td><td>JPEG (TCP then UDP chunked)</td></tr>
+        <tr><td>Control inverted</td><td>Fix mixing signs</td></tr>
+        <tr><td>Conda breaks ROS Python</td><td>/usr/bin/python3</td></tr>
+        <tr><td>Tailscale MTU 1280</td><td>UDP chunks ≤1200</td></tr>
+      </table>
+      <p class="muted" style="margin-top:1rem">Still open: motor degradation, right-tilt, IMU→chair E2E, DERP vs direct.</p>
+    </section>
+
+    <section class="slide">
+      <h1>Results: Verified Capabilities</h1>
+      <div class="bar"></div>
+      <ul>
+        <li>Remote drive from sim chair over Tailscale</li>
+        <li>Three live camera streams on Surround monitors</li>
+        <li>D-BOX SDK integrated (local input cueing)</li>
+        <li>Reproducible full-stack launch (orin_launch_all.sh)</li>
+      </ul>
+      <p class="muted" style="margin-top:1.2rem">Baseline 2026-07-27 · TCP video 2026-08-04 · UDP JPEG primary 2026-08-07</p>
+    </section>
+
+    <section class="slide">
+      <h1>Results: Baseline Metrics</h1>
+      <div class="bar"></div>
+      <table>
+        <tr><th>Metric</th><th>Value</th><th>Target</th></tr>
+        <tr><td>Tailscale RTT</td><td>88-112 ms (DERP)</td><td>Direct peer</td></tr>
+        <tr><td>Video</td><td>1280×720 @ 30 JPEG/UDP (target)</td><td>H.265 / higher res</td></tr>
+        <tr><td>Glass-to-glass</td><td>TBD</td><td>&lt;150 ms median</td></tr>
+        <tr><td>Control rate</td><td>~20 Hz</td><td>50 Hz + watchdogs</td></tr>
+        <tr><td>Bandwidth (3 cams)</td><td>TBD</td><td>&lt;25 Mbps</td></tr>
+      </table>
+    </section>
+
+    <section class="slide">
+      <h1>Demo Summary</h1>
+      <div class="bar"></div>
+      <p>Operator in D-BOX chair → panoramic video → kart responds to wheel.</p>
+      <p><strong>Verified path:</strong></p>
+      <ol>
+        <li>Jetson: <code>orin_launch_all.sh</code></li>
+        <li>Windows: <code>start_all.bat</code> or <code>windows_camera_receiver_udp.py</code> + sender</li>
+      </ol>
+      <p class="muted">Do not claim unless live: H.265 primary, &lt;150 ms G2G, full IMU→chair, perfect motors.</p>
+    </section>
+
+    <section class="slide">
+      <h1>Future Work</h1>
+      <div class="bar"></div>
+      <ol>
+        <li>Motors: degradation &amp; right-tilt</li>
+        <li>IMU → D-BOX end-to-end + washout</li>
+        <li>H.265 / higher-resolution video</li>
+        <li>Latency on direct Tailscale (&lt;150 ms)</li>
+        <li>Control sequence numbers + multi-layer watchdogs</li>
+        <li>systemd + persistent firewall + 30 min soak</li>
+      </ol>
+    </section>
+
+    <section class="slide">
+      <h1>Codebase &amp; Handoff</h1>
+      <div class="bar"></div>
+      <pre>cursor-test/windows/   ← launch Windows apps
+cursor-test/jetson/    ← push to ~/Documents/SimChair_Teleop/
+cursor-test/docs/      ← architecture, launch, known issues</pre>
+      <p><strong>Never modify</strong> <code>/home/dinosaur/IGVC/</code></p>
+      <p class="muted">See docs/deliverables/HANDOFF_PACKAGE.md</p>
+    </section>
+
+    <section class="slide">
+      <h1>Thank You</h1>
+      <div class="bar"></div>
+      <p>Questions?</p>
+      <p class="muted">Ryan Simpson (lead) · Tyler Carrasco · Yi-Szen Tang · Kevin Xu · Justin Dang</p>
+      <p class="muted">Mentor: Dr. Behnam Bahr · AVL, Cal Poly Pomona</p>
+      <p style="margin-top:1.2rem">Submit: mghasemi@cpp.edu · CC: rmsimpson@cpp.edu, kbraga@cpp.edu</p>
+    </section>
+
+  </div>
+  <div class="footer">
+    <span>Marvin Sim Chair · AVL Summer Cohort 2026</span>
+    <span id="page">1 / 1</span>
+  </div>
+  <script>
+    const slides = [...document.querySelectorAll('.slide')];
+    let i = 0;
+    const page = document.getElementById('page');
+    function show(n) {
+      i = Math.max(0, Math.min(slides.length - 1, n));
+      slides.forEach((s, idx) => s.classList.toggle('active', idx === i));
+      page.textContent = (i + 1) + ' / ' + slides.length;
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') show(i + 1);
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') show(i - 1);
+      if (e.key === 'Home') show(0);
+      if (e.key === 'End') show(slides.length - 1);
+    });
+    show(0);
+  </script>
+</body>
+</html>

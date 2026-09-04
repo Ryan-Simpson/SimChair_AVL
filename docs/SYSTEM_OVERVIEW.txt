@@ -1,0 +1,264 @@
+================================================================================
+HAPTIC TELEOPERATION SYSTEM -- OVERVIEW
+Cal Poly Pomona AVL Lab
+Last path/port refresh: 2026-08-06 (see also docs/LAUNCH_PROCEDURE.md)
+
+
+
+--------------------------------------------------------------------------------
+WHAT THIS SYSTEM DOES
+--------------------------------------------------------------------------------
+
+This system lets a driver sit in a sim chair (D-BOX motion platform) inside a
+building and remotely drive a go-kart (Marvin) in real time. The driver uses a
+Thrustmaster racing wheel and pedals. Three ZED X cameras on the kart stream
+live video back to three monitors in front of the driver. The D-BOX chair moves
+in response to driver inputs (and eventually real vehicle motion). All
+communication happens over Tailscale VPN so the two machines can talk to each
+other over the internet or local network without port forwarding.
+
+
+--------------------------------------------------------------------------------
+THE TWO MACHINES
+--------------------------------------------------------------------------------
+
+WINDOWS PC (Sim Chair)
+  IP address on Tailscale: 100.91.25.107
+  This is the machine the driver sits at. It runs the wheel/pedal reader,
+  sends drive commands to the kart, receives camera feeds, and drives the
+  D-BOX chair.
+
+JETSON ORIN (on the kart, nicknamed "dinosaur")
+  IP address on Tailscale: 100.93.121.3
+  This is the onboard computer on Marvin. It runs ROS2, reads the cameras,
+  reads the IMU, and forwards drive commands to the Teensy motor controller.
+
+
+--------------------------------------------------------------------------------
+NETWORKING -- PORTS
+--------------------------------------------------------------------------------
+
+All traffic goes over Tailscale VPN. No router configuration needed.
+
+  Port 5006  UDP   Windows --> Jetson   Drive commands (steering, throttle, brake, mode)
+  Port 5007  UDP   Jetson  --> Windows  IMU haptics (imu_bridge.py, 50 Hz binary)
+  Port 5008  UDP   Jetson  --> Windows  Vehicle controller status
+  Port 9001  UDP   Jetson  --> Windows  Left ZED JPEG (chunked) — PRIMARY
+  Port 9002  UDP   Jetson  --> Windows  Front ZED JPEG (chunked) — PRIMARY
+  Port 9003  UDP   Jetson  --> Windows  Right ZED JPEG (chunked) — PRIMARY
+  Port 9001  TCP   Jetson  --> Windows  Left ZED JPEG — legacy fallback
+  Port 9002  TCP   Jetson  --> Windows  Front ZED JPEG — legacy fallback
+  Port 9003  TCP   Jetson  --> Windows  Right ZED JPEG — legacy fallback
+
+IMPORTANT: The Jetson firewall (iptables) blocks 9001-9003 by default (TCP and UDP).
+orin_launch_all.sh opens both; rules do not persist across reboot.
+
+
+--------------------------------------------------------------------------------
+FILES ON WINDOWS
+--------------------------------------------------------------------------------
+
+Launch folder (keep exe + DLLs + receivers together):
+  C:\Users\VRX 226\cursor-test\windows\
+
+All of these must be in the same folder for the exe to work.
+
+  simchair_sender_dbox.exe
+    The main Windows program. Does three things simultaneously:
+    1. Reads the Thrustmaster wheel and pedals using SDL2
+    2. Sends steering/throttle/brake/mode as a CSV string over UDP to the
+       Jetson at 100.93.121.3 port 5006, 20 times per second
+    3. Drives the D-BOX motion chair actuators using the same inputs so
+       the driver feels cornering, acceleration, and braking
+
+  dbxLive64.dll
+    The D-BOX motion library. This specific file comes from the DevSim
+    package (CalPolyPomonaDevSim-10768.zip) and is the version that
+    actually moves the chair hardware. The version inside the D-BOX SDK
+    package only shows a debug console and does NOT move the chair.
+    The exe will not start without this file in the same folder.
+
+  SDL2.dll
+    The SDL2 library used to read the Thrustmaster wheel and pedals.
+    The exe will not start without this file in the same folder.
+
+  windows_camera_receiver_udp.py
+    PRIMARY video receiver. Listens UDP 9001-9003, reassembles chunked JPEG
+    frames (magic MJPG), displays three OpenCV windows. Pair with
+    orin_camera_sender_udp.py. Default for start_all.bat (VIDEO_MODE=udp).
+
+  windows_camera_receiver.py
+    Legacy TCP JPEG receiver (connects to Jetson 9001-9003). Use VIDEO_MODE=jpeg.
+
+  Requires Python with opencv-python and numpy:
+      pip install opencv-python numpy
+
+
+--------------------------------------------------------------------------------
+FILES ON THE JETSON  (live: ~/Documents/SimChair_Teleop/)
+--------------------------------------------------------------------------------
+
+Windows mirror of these scripts: C:\Users\VRX 226\cursor-test\jetson\
+
+  orin_launch_all.sh
+    Preferred full bring-up (tmux teleop). Preflight kills leftover ZEDs,
+    restarts Argus, opens TCP+UDP 9001-9003, sensors, three ZEDs with
+    serials + publish_tf/urdf, UDP camera sender, vehicle --duty, imu_bridge.
+    Defaults: CAMERA_TRANSPORT=udp, SIMCHAIR_DRIVE=1.
+    Kill: tmux kill-session -t teleop
+
+  orin_camera_sender_udp.py
+    PRIMARY video. Raw→1280x720 JPEG q85 @ ~30fps, chunked UDP to Windows.
+    Ports: left 9001, front 9002, right 9003.
+
+  orin_camera_sender.py
+    Legacy TCP JPEG sender (~15fps). CAMERA_TRANSPORT=tcp in launch_all.
+
+  imu_bridge.py
+    Xsens/ZED IMU → UDP 5007 to Windows @ 50 Hz.
+
+  simchair_drive.sh
+    Borrows Teensy for sim-chair (--duty). Ctrl+C restarts full avros-webui.
+
+  orin_vehicle_controller.py
+    Listens UDP 5006. Default --duty sends UL/UR open-loop (moves Sparks).
+    --velocity sends L/R RPM (often purple LEDs / no motion until PID fixed).
+    Watchdog zeros motors on UDP silence. Never send Teensy 'S'.
+
+  orin_imu_forwarder.py
+    Runs on the Jetson. Subscribes to the /imu/data ROS2 topic from the
+    Xsens MTi-680G IMU. Packs quaternion + angular velocity + linear
+    acceleration (10 doubles, 80 bytes total) into a UDP packet and sends
+    it to Windows port 9000 at 50Hz. This data is received by
+    windows_imu_receiver.py on Windows. The IMU to D-BOX wiring is the
+    next step -- the chair should eventually react to real vehicle motion
+    (actual G-forces from cornering and braking) rather than just driver
+    inputs.
+
+
+--------------------------------------------------------------------------------
+HARDWARE ON THE KART
+--------------------------------------------------------------------------------
+
+  3x ZED X cameras (GMSL, connected via ZED Link Quad capture card)
+    - zed_front  -- faces forward, main driving view
+    - zed_left   -- faces left
+    - zed_right  -- faces right
+    Each camera runs as its own ROS2 node. They must be launched one at a
+    time with a pause between each or they crash each other.
+
+  Xsens MTi-680G IMU
+    GPS-aided inertial measurement unit. Works well outdoors with a GPS fix.
+    Unreliable indoors because it cannot get a GPS signal.
+
+  Teensy 4.1 (microcontroller)
+    Connected to the Jetson via USB (appears as /dev/ttyACM0 at 115200 baud).
+    Receives "L<rpm> R<rpm>" serial commands and forwards them to two
+    REV Spark MAX motor controllers via CAN bus.
+    Has its own 300ms watchdog -- stops motors if no command arrives.
+
+  REV Spark MAX x2 (motor controllers)
+    CAN ID 1 = left motor, CAN ID 2 = right motor.
+    Differential steering -- to turn left, slow the left motor and speed up
+    the right motor (or reverse one side for sharp turns).
+
+
+--------------------------------------------------------------------------------
+IMPORTANT SOFTWARE NOTES FOR THE JETSON
+--------------------------------------------------------------------------------
+
+Every terminal on the Jetson that runs ROS2 commands must have these
+environment variables set first. Without them ROS2 nodes cannot find each
+other and topics will not appear.
+
+  unset DISPLAY
+    Prevents the ZED cameras from crashing. The ZED SDK tries to use a
+    display (DISPLAY=:1001) for OpenGL which causes it to use software
+    rendering and crash with an EGL error. Unsetting DISPLAY forces the
+    ZED SDK to use NVIDIA GPU rendering directly without a display.
+
+  source /home/dinosaur/IGVC/install/setup.bash
+    Loads all the custom ROS2 packages built for this project (ZED wrapper,
+    Xsens driver, avros_bringup launch files, etc.)
+
+  export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+    Tells ROS2 to use CycloneDDS as its network transport. The default
+    transport does not work reliably on this machine.
+
+  export CYCLONEDDS_URI=file:///home/dinosaur/IGVC/install/avros_bringup/share/avros_bringup/config/cyclonedds.xml
+    Points CycloneDDS to a custom configuration file that sets the correct
+    network interface and discovery settings for this robot.
+
+  export ROS_DOMAIN_ID=42
+    ROS2 uses domain IDs to separate different robot networks on the same
+    LAN. All nodes must use the same domain ID or they cannot see each other.
+
+Python scripts on the Jetson must be run with /usr/bin/python3 NOT python3.
+The Jetson has Conda installed which intercepts the python3 command and uses
+Python 3.12 which does not have ROS2 (rclpy) available. /usr/bin/python3 is
+the system Python 3.10 which does have rclpy.
+
+Do NOT modify any files inside /home/dinosaur/IGVC/. That is the built ROS2
+workspace. Changes there get overwritten when the workspace is rebuilt and
+can break the autonomous driving stack that the rest of the team uses.
+
+
+--------------------------------------------------------------------------------
+STARTUP SEQUENCE (preferred — see docs/LAUNCH_PROCEDURE.md for full detail)
+--------------------------------------------------------------------------------
+
+PREFERRED Jetson (one command):
+  bash ~/Documents/SimChair_Teleop/orin_launch_all.sh
+  Defaults: CAMERA_TRANSPORT=udp, SIMCHAIR_DRIVE=1 (vehicle --duty)
+  Kill: tmux kill-session -t teleop ; sudo systemctl start avros-webui
+
+PREFERRED Windows:
+  cd "C:\Users\VRX 226\cursor-test\windows"
+  .\start_all.bat
+  rem VIDEO_MODE=udp default → windows_camera_receiver_udp.py
+  rem wheel mode 1 = drive
+
+ZED REQUIREMENTS (if launching cameras manually):
+  - unset DISPLAY   (NOT export DISPLAY=)
+  - publish_tf:=true and publish_urdf:=true
+  - camera serial numbers + IGVC yaml overrides
+  - 25s between cameras; do not fight IGVC ZED watchdogs
+
+DRIVE MODE:
+  Sim chair starts in mode 0 (stopped). Shifter paddle → mode 1 (drive).
+
+
+--------------------------------------------------------------------------------
+IF CAMERAS CRASH
+--------------------------------------------------------------------------------
+
+If any ZED camera crashes or all three go down, kill them all first before
+relaunching. Trying to relaunch one while others are still running will cause
+them all to crash again.
+
+  sudo pkill -f zed
+  sudo pkill -f component_container
+
+Wait 5 seconds, then relaunch one at a time starting from step 3.
+
+
+--------------------------------------------------------------------------------
+WHAT IS LEFT TO BUILD
+--------------------------------------------------------------------------------
+
+IMU to D-BOX Chair Motion
+  Currently the D-BOX chair reacts to the driver's own inputs (if you turn
+  the wheel, the chair tilts). The goal is to make the chair react to what
+  the kart is actually doing -- real G-forces measured by the Xsens IMU.
+  This requires orin_imu_forwarder.py running on the Jetson and
+  windows_imu_receiver.py on Windows, then wiring the quaternion/acceleration
+  data into the D-BOX PostEvent call in the exe.
+  NOTE: The Xsens IMU works best outdoors with a GPS fix. Indoors it
+  provides orientation data but no reliable position.
+
+Camera Quality Improvements
+  The cameras currently stream at 15fps and 960x600 resolution per camera.
+  These were set conservatively to stay within Tailscale bandwidth limits.
+  Resolution and framerate can be tuned once the system is stable.
+
+================================================================================

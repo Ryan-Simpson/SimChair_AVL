@@ -1,0 +1,10 @@
+# Windows sim-chair Python scripts (camera receivers, optional tooling)
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# ZED SDK streaming receiver (Phase 1 Plan A)
+# Install separately from Stereolabs — not on PyPI:
+#   https://www.stereolabs.com/developers/release/
+# pyzed
+
+# Jetson scripts use ROS2 (rclpy, sensor_msgs) — install via IGVC workspace, not pip.

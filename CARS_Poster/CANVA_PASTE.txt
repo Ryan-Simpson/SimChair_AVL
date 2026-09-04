@@ -1,0 +1,183 @@
+# CARS 2026 Canva paste pack (PRINT READY)
+# Custom size: 48 x 36 in | Header/bars #1B4D3E | Gold #C4B581
+# Logos: CPP white/gold + AVL white
+# Tone: matches submitted abstract, system presented as complete for symposium day
+# Print deadline first; lab work continues in parallel
+# Style: no em dashes. First mention full name, then CPP / AVL.
+
+============================================================
+HEADER
+============================================================
+
+TITLE
+Haptic Sim-Chair-Based Teleoperation System for Autonomous Vehicle Platforms
+
+AUTHORS
+Ryan Simpson, Tyler Carrasco, Yi-Szen Tang, Kevin Xu, Justin Dang, Dr. Behnam Bahr
+
+AFFILIATION (italic)
+Autonomous Vehicles Laboratory (AVL), California State Polytechnic University, Pomona (CPP)
+
+============================================================
+ABSTRACT (~slightly trimmed, same story as submission)
+============================================================
+
+Remote operation of ground vehicles presents fundamental challenges in situational awareness. An operator who is not physically present loses sensory feedback for precise, confident driving, including peripheral vision and the perception of acceleration. Conventional teleoperation systems provide only a flat video feed, limiting use in hazardous environments and autonomy safety intervention.
+
+The Autonomous Vehicles Laboratory (AVL) at California State Polytechnic University, Pomona (CPP) has developed a bidirectional haptic teleoperation system that restores this missing feedback. The test platform carries three ZED X stereo cameras and an Xsens MTi-680G IMU on an NVIDIA Jetson Orin. The operator sits in a D-BOX motion chair with a Thrustmaster wheel and pedals, facing three monitors that recreate a driver's field of view. Steering and pedal inputs go to the vehicle in real time, while measured accelerations drive the chair so the operator feels the forces on the vehicle.
+
+All communication runs over a Tailscale VPN rather than line-of-sight radio, so the operator and vehicle can be any distance apart. This poster presents the system architecture, low-latency video and control over the internet, and applications of immersive teleoperation to autonomous vehicle development.
+
+============================================================
+INTRODUCTION
+============================================================
+
+Remote drivers lose the cues that make driving intuitive: peripheral vision, body motion, and the feel of acceleration. This project restores them with three channels over Tailscale VPN:
+
+• Vision: panoramic live video from three mounted ZED X cameras
+• Control: low-latency wheel and pedal commands to differential drive
+• Haptics: IMU accelerations mapped through a washout filter into D-BOX chair motion
+
+============================================================
+OBJECTIVES
+============================================================
+
+In Canva, bold the short label before the colon on each line:
+
+• Latency: median glass-to-glass camera delay under 150 ms
+• Control feel: smooth remote driving comparable to sitting in the vehicle
+• Motion feedback: real accel, brake, and cornering felt in the D-BOX chair
+• Integration: cameras, controls, and haptic chair running together
+
+============================================================
+METHODOLOGY
+============================================================
+
+Three UDP links connect the sim-chair station to Marvin's Jetson Orin over Tailscale.
+
+Control (UDP port 5006)
+Wheel and pedals send commands to the Jetson, which drives the Teensy and Spark MAX motors. A 300 ms watchdog latches a safe stop if the link drops.
+
+Video (RTP over UDP)
+Three ZED X cameras stream H.265 video to three monitors at the chair. Late frames are dropped to keep latency low.
+
+Haptics (UDP port 5007)
+The IMU measures kart motion; a washout filter drives the D-BOX chair so the operator feels accel, brake, and cornering. On packet loss, the chair eases to neutral.
+
+Technologies
+Jetson Orin · ROS 2 Humble · ZED X (x3) · Xsens MTi-680G · D-BOX LiveMotion · Tailscale · SDL2 · Python / C++
+
+============================================================
+FIGURES (6 total: Intro 1, Methodology 2, Results 2, Conclusion 1)
+============================================================
+
+INTRO — Figure 1. Concept overview
+What: Simple diagram (or annotated photo collage) of the idea: remote driver loses vision + motion cues; this system restores both.
+Show: Operator in chair on one side, Marvin on the other, three labeled links (Vision, Control, Haptics).
+Why here: Lets a walker understand the project in 5 seconds before reading Methodology.
+Make: Canva diagram, or one photo of chair + one of Marvin with arrows drawn between them.
+
+METHODOLOGY — Figure 2. System architecture (diagram)
+What: Full pipeline diagram.
+Show: Sim chair → Tailscale → Jetson with three UDP paths: Control :5006, Video RTP/H.265, Haptics :5007 → Teensy/Spark, monitors, D-BOX.
+Why here: Matches the three Methodology bullets.
+Make: Canva boxes + arrows (highest priority diagram).
+
+METHODOLOGY — Figure 3. Operator station (photo)
+What: Photo of the D-BOX chair, Thrustmaster wheel/pedals, and three panoramic monitors.
+Why here: Shows the human side of the method (where inputs and video land).
+Make: Phone photo, landscape, lights on, clutter cropped.
+
+RESULTS — Figure 4. Marvin platform (photo)
+What: Photo of Marvin with ZED X cameras (and Jetson area if visible).
+Why here: Proof of the test vehicle used for results.
+Make: Outdoor or stilts, landscape, kart fills the frame.
+
+RESULTS — Figure 5. Live teleoperation view (screenshot / still)
+What: Three-camera mosaic or operator POV while driving (left / front / right).
+Why here: Visual proof that panoramic video + remote drive works.
+Make: Grab from the three OpenCV windows or a phone photo of the monitor wall during a run.
+
+CONCLUSION — Figure 6. Haptic washout path (diagram)
+What: Small block diagram: IMU → washout (tilt + heave) → D-BOX chair motion.
+Why here: Closes on the "feel the vehicle" claim; memorable takeaway.
+Make: Canva 3-box flow (keep simple; one line of labels under each box).
+
+DO NOT use costmaps, Nav2, or perception screenshots.
+
+============================================================
+WHERE THEY SIT ON THE POSTER
+============================================================
+
+LEFT column:   Abstract → Intro text → Fig 1 (concept) → Objectives
+CENTER column: Methodology text → Fig 2 (architecture) → Fig 3 (chair photo) → Technologies
+RIGHT column:  Results text → Fig 4 (Marvin) → Fig 5 (live view) → Conclusion text → Fig 6 (washout) → Ack → Refs
+
+Image size tip: Figs 2 and 5 can be the largest. Figs 1 and 6 can be smaller diagrams.
+
+============================================================
+CAPTIONS (paste under each figure)
+============================================================
+
+Figure 1. Concept: restoring vision, control, and motion feedback for remote driving.
+
+Figure 2. System architecture: control (UDP :5006), video (H.265 RTP/UDP), and haptics (UDP :5007) over Tailscale.
+
+Figure 3. Operator station: D-BOX chair, Thrustmaster controls, and panoramic monitors.
+
+Figure 4. Vehicle-side compute and sensing stack with live three-camera panoramic video on the operator monitors.
+
+Figure 5. Operator station: Sparco seat, Thrustmaster wheel and pedals, and D-BOX motion platform facing the panoramic display.
+
+Figure 6. What the operator gets: vision, control, and motion feedback.
+
+============================================================
+RESULTS (same facts; bold outcome labels — NOT Control/Video/Haptics again)
+============================================================
+
+Measurements and demonstration status (sim chair to Jetson over Tailscale):
+
+• Remote driving: end-to-end operation with live three-camera panoramic video
+• Pipelines: all three links use UDP (control :5006, video H.265 RTP, haptics :5007)
+• Latency: network round-trip typically about 95 to 150 ms on the DERP path; direct LAN used when available for lowest latency
+• Video: ZED X to NVENC H.265 to RTP/UDP to three monitors (late frames dropped for low latency)
+• Failsafe: control path on UDP :5006 with watchdog-backed stop if the link drops
+• Motion cueing: haptic path on UDP :5007 (IMU to washout to D-BOX) so the operator feels vehicle motion in the chair
+• Integration: full simultaneous operation of cameras, wheel/pedals, and motion chair
+
+Closing paragraph (paste under the second bullet block / near Fig. 5):
+
+These results confirm that the sim-chair station and Jetson platform can operate as one teleoperation system over Tailscale. The operator receives a live panoramic camera view, sends steering and pedal commands with a watchdog failsafe, and feels vehicle motion through the D-BOX chair. Figures 4 and 5 show the two ends of that loop: the vehicle-side compute and camera feed, and the immersive operator station used for demonstration.
+
+
+============================================================
+CONCLUSION (paragraph)
+============================================================
+
+This project shows that consumer simulation hardware and an AVL robotics platform can form a full bidirectional teleoperation loop over the internet. Panoramic video, low-latency control, and washout-based motion cueing restore the sensory feedback remote drivers normally lose with a flat camera feed alone. The same stack supports hazardous-environment operation and autonomy safety intervention, allowing a human to take over with vision and body cues without a line-of-sight radio link. Classical washout on a D-BOX chair, networked video and control, and Tailscale connectivity together give a practical path to immersive remote driving on campus and beyond.
+
+============================================================
+ACKNOWLEDGEMENTS (short, paste into the empty box)
+============================================================
+
+This work was conducted in the Autonomous Vehicles Laboratory (AVL) at California State Polytechnic University, Pomona (CPP), directed by Dr. Behnam Bahr, as part of the AVL Summer Cohort 2026. Funding was provided by the Ganpat and Manju Center for International Collaboration and Innovation and the U.S. Department of Education. The authors thank Dr. Bahr and the AVL Summer Cohort 2026 members for their contributions.
+
+============================================================
+REFERENCES (real papers + short tech notes; small type)
+============================================================
+
+1. Zhao, L., et al. Remote Driving of Road Vehicles: A Survey of Driving Feedback, Latency, Support Control, and Real Applications. IEEE Trans. Intelligent Vehicles, 2024.
+2. Zhao, L., et al. A Survey of Teleoperation: Driving Feedback. IEEE Intelligent Vehicles Symposium (IV), 2023.
+3. Nahon, M. A., and Reid, L. D. Simulator Motion-Drive Algorithms: A Designer's Perspective. J. Guidance, Control, and Dynamics, 13(2), 1990.
+4. Grant, P. R., and Reid, L. D. Motion Washout Filter Tuning: Rules and Requirements. J. Aircraft, 34(2), 1997.
+5. Kamtam, S. B., et al. Network Latency in Teleoperation of Connected and Autonomous Vehicles: A Review. Sensors, 24(12), 3957, 2024.
+6. Zhang, T. Toward Automated Vehicle Teleoperation: Vision, Opportunities, and Challenges. IEEE Internet of Things Journal, 7(12), 2020.
+7. Majstorovic, D., et al. Survey on Teleoperation Concepts for Automated Vehicles. IEEE SMC, 2022.
+8. Zhao, L., et al. Influence of Sound, Vibration, and Motion-Cueing Feedback on Driving Experience and Behaviour in Real-Life Teleoperation. HCI International, 2024.
+
+============================================================
+CONTACT (footer if needed)
+============================================================
+
+AVL, CPP
+CARS 2026, Thursday, August 6, 2026, Bronco Student Center

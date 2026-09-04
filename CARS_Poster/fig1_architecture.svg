@@ -1,0 +1,52 @@
+<svg viewBox="0 0 1120 560" xmlns="http://www.w3.org/2000/svg" font-family="Georgia, 'Times New Roman', Times, serif">
+  <defs>
+    <marker id="ah" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#C4B581"/>
+    </marker>
+    <marker id="ahS" markerWidth="7" markerHeight="7" refX="0.5" refY="3" orient="auto-start-reverse">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#C4B581"/>
+    </marker>
+  </defs>
+
+  <rect x="6" y="6" width="1108" height="548" rx="0" fill="#ffffff" stroke="#dddddd" stroke-width="1.5"/>
+
+  <!-- A: Sim Chair Station -->
+  <rect x="54" y="88" width="320" height="132" rx="0" fill="#ffffff" stroke="#1B4D3E" stroke-width="3"/>
+  <text x="214" y="138" text-anchor="middle" fill="#111111" font-size="26" font-weight="700">Sim Chair Station</text>
+  <text x="214" y="170" text-anchor="middle" fill="#111111" font-size="16">Wheel &#183; Pedals &#183; D-BOX</text>
+  <text x="214" y="194" text-anchor="middle" fill="#111111" font-size="16">3 Monitors</text>
+
+  <!-- B: Tailscale VPN (gold accent outline) -->
+  <rect x="435" y="118" width="250" height="72" rx="0" fill="#ffffff" stroke="#C4B581" stroke-width="3"/>
+  <text x="560" y="150" text-anchor="middle" fill="#111111" font-size="22" font-weight="700">Tailscale VPN</text>
+  <text x="560" y="172" text-anchor="middle" fill="#111111" font-size="13">internet &#183; any distance</text>
+
+  <!-- C: Marvin / Jetson Orin -->
+  <rect x="746" y="88" width="320" height="132" rx="0" fill="#ffffff" stroke="#1B4D3E" stroke-width="3"/>
+  <text x="906" y="138" text-anchor="middle" fill="#111111" font-size="24" font-weight="700">Marvin &#8212; Jetson Orin</text>
+  <text x="906" y="170" text-anchor="middle" fill="#111111" font-size="16">ROS 2 Humble</text>
+  <text x="906" y="194" text-anchor="middle" fill="#111111" font-size="16">Ubuntu 22.04</text>
+
+  <!-- Bidirectional gold arrows (thin) -->
+  <line x1="378" y1="154" x2="431" y2="154" stroke="#C4B581" stroke-width="3" marker-start="url(#ahS)" marker-end="url(#ah)"/>
+  <line x1="689" y1="154" x2="742" y2="154" stroke="#C4B581" stroke-width="3" marker-start="url(#ahS)" marker-end="url(#ah)"/>
+
+  <!-- vertical connectors (thin) -->
+  <line x1="214" y1="226" x2="214" y2="302" stroke="#C4B581" stroke-width="3" marker-end="url(#ah)"/>
+  <line x1="906" y1="226" x2="906" y2="302" stroke="#C4B581" stroke-width="3" marker-end="url(#ah)"/>
+
+  <!-- Left detail panel -->
+  <rect x="54" y="306" width="320" height="150" rx="0" fill="#ffffff" stroke="#1B4D3E" stroke-width="3"/>
+  <text x="80" y="344" fill="#111111" font-size="19"><tspan font-weight="700">Control</tspan>  &#183;  UDP :5006</text>
+  <text x="80" y="384" fill="#111111" font-size="19"><tspan font-weight="700">Video</tspan>  &#183;  TCP :9001&#8211;9003</text>
+  <text x="80" y="424" fill="#111111" font-size="19"><tspan font-weight="700">Haptics</tspan>  &#183;  UDP :5007</text>
+
+  <!-- Right detail panel -->
+  <rect x="746" y="306" width="320" height="150" rx="0" fill="#ffffff" stroke="#1B4D3E" stroke-width="3"/>
+  <text x="772" y="344" fill="#111111" font-size="19">Teensy 4.1 &#8594; Spark MAX</text>
+  <text x="772" y="384" fill="#111111" font-size="19">ZED X &#215;3 stereo cameras</text>
+  <text x="772" y="424" fill="#111111" font-size="19">Xsens MTi-680G IMU</text>
+
+  <text x="560" y="496" text-anchor="middle" fill="#111111" font-size="18" font-weight="700">Figure 1. System architecture: control (UDP :5006), video (H.265 RTP/UDP),</text>
+  <text x="560" y="522" text-anchor="middle" fill="#111111" font-size="18" font-weight="700">and haptics (UDP :5007) over Tailscale between the sim-chair station and Marvin&#8217;s Jetson Orin.</text>
+</svg>

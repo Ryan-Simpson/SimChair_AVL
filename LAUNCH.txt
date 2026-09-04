@@ -1,0 +1,102 @@
+Marvin Sim Chair — simchair_teleop (updated 2026-09-04)
+=====================================================
+
+windows\       Windows runtime — LAUNCH FROM HERE
+jetson\        Jetson script mirror (push to ~/Documents/SimChair_Teleop/)
+docs\          Start: PERCEPT_STACK_AND_SIMCHAIR.md · SESSION_HANDOFF · FRESH_CHAT_VIDEO_PROMPT.md
+CARS_Poster\   Poster
+_archive\      Old mirrors — not day-to-day
+
+Docs map
+--------
+  docs\PERCEPT_STACK_AND_SIMCHAIR.md   percept always on — READ THIS
+  docs\SESSION_HANDOFF_CONTEXT_LOSS.md current map (2026-09)
+  docs\FRESH_CHAT_VIDEO_PROMPT.md      paste into a new chat for video redesign
+  docs\H265_BRINGUP.md                 H.265 / ZED stream bring-up + Tailscale limits
+  docs\CONTROL_PROTOCOL.md     Teensy ownership / --duty / WebUI restore
+  docs\LAUNCH_PROCEDURE.md     how to start/stop everything
+  docs\FILES_REFERENCE.md      what each file is
+  docs\SYSTEM_ARCHITECTURE.md
+  docs\KNOWN_ISSUES_AND_HISTORY.md
+
+-------------------------------------
+*** READ THIS — percept-stack is the car ***
+-------------------------------------
+carla-nav2-avl percept-stack owns ZEDs/sensors on boot.
+DO NOT run orin_launch_all.sh while percept is up — it kills ZEDs/Argus
+and will break WebUI + perception.
+
+WebUI says Disconnected (service still "active"):
+  sudo journalctl -u avros-webui -n 50 --no-pager
+  sudo systemctl restart avros-webui
+  sleep 5
+  systemctl is-active avros-webui
+  ss -ltnp | grep 8000
+  rem then hard-refresh https://100.93.121.3:8000
+
+PREFERRED clean launch (H.265 + wheel, NO JPEG — avoids link meltdown):
+  bash ~/Documents/SimChair_Teleop/simchair_launch_clean.sh
+  # Windows CMD:  set VIDEO_MODE=zed  then  start_all.bat
+
+Attach variants:
+  bash ~/Documents/SimChair_Teleop/simchair_attach.sh --ros-drive --no-cam
+  bash ~/Documents/SimChair_Teleop/simchair_attach.sh --ros-drive   # also starts JPEG — don't with H.265
+  bash ~/Documents/SimChair_Teleop/simchair_attach.sh --drive       # LEGACY serial steal
+
+  Kill ONLY us (leaves percept alone):
+    tmux kill-session -t simchair
+    sudo pkill -f orin_simchair_ros_bridge
+    sudo pkill -f orin_vehicle_controller   # only if legacy --drive
+    sudo systemctl restart avros-webui      # only if legacy --drive
+
+Drive-only borrow (cameras already from percept):
+  bash ~/Documents/SimChair_Teleop/simchair_drive.sh
+
+Windows:
+  cd "C:\Users\VRX 226\simchair_teleop\windows"
+  .\start_all.bat
+  rem wheel: mode 1 = drive, mode 0 = park
+
+Video profiles:
+  # DEFAULT attach = compressed (safe w/ percept). Soft image but stable FPS.
+  CAMERA_SOURCE=compressed   # default — do NOT use raw 720p×3 with percept up (crashed Orin)
+  CAMERA_SOURCE=raw CAMERA_PROFILE=indoor   # safer raw try: 960x540
+  CAMERA_SOURCE=raw CAMERA_PROFILE=default  # 1280x720 — can crash Jetson if percept is loaded
+  CAMERA_PROFILE=hq          # only with raw; heaviest
+
+LEGACY full stack (ONLY if percept-stack is STOPPED/disabled):
+  bash ~/Documents/SimChair_Teleop/orin_launch_all.sh
+
+-------------------------------------
+Drive-only borrow (cameras already up)
+-------------------------------------
+  bash ~/Documents/SimChair_Teleop/simchair_drive.sh
+  # Ctrl+C → full avros-webui restart (HTTPS :8000)
+
+Never run WebUI actuator + orin_vehicle_controller at the same time.
+  Check:  sudo lsof /dev/ttyACM0
+
+-------------------------------------
+Clean relaunch after camera crash
+-------------------------------------
+  tmux kill-session -t teleop 2>/dev/null
+  sudo pkill -f zed_camera.launch.py
+  sudo pkill -f orin_camera_sender
+  sudo systemctl restart nvargus-daemon
+  sleep 3
+  bash ~/Documents/SimChair_Teleop/orin_launch_all.sh
+
+-------------------------------------
+Sync jetson\ → Kart
+-------------------------------------
+On Windows:
+  cd "C:\Users\VRX 226\cursor-test\jetson"
+  python -m http.server 8765
+
+On Jetson:
+  cd ~/Documents/SimChair_Teleop
+  curl -O http://100.91.25.107:8765/orin_launch_all.sh
+  curl -O http://100.91.25.107:8765/orin_camera_sender_udp.py
+  curl -O http://100.91.25.107:8765/orin_vehicle_controller.py
+  curl -O http://100.91.25.107:8765/simchair_drive.sh
+  chmod +x orin_launch_all.sh simchair_drive.sh
