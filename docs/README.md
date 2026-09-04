@@ -1,6 +1,8 @@
-# Marvin Sim Chair — Documentation
+# Documentation index
 
-**Updated:** 2026-08-07
+Project intro and quick start live in the [root README](../README.md).
+
+**Updated:** 2026-09-04
 
 ## Cohort final deliverables (due 2026-08-07 11:59 PM)
 
