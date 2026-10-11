@@ -33,6 +33,7 @@ Presentation-ready, one file per section (lab-accurate):
 
 | Doc | Use when you need… |
 |-----|-------------------|
+| [RELAY_TELEOP_2026-10-10.md](RELAY_TELEOP_2026-10-10.md) | **Latest (2026-10):** Vultr peer relay, WebRTC 3-cam video, cellular bitrate budget, `jetson/relay_teleop/` scripts |
 | [PERCEPT_STACK_AND_SIMCHAIR.md](PERCEPT_STACK_AND_SIMCHAIR.md) | **Start here (2026-08):** percept always on; attach vs launch_all; purple/`OK L` |
 | [H265_BRINGUP.md](H265_BRINGUP.md) | **H.265 / ZED native stream** phased bring-up (JPEG fallback stays) |
 | [CONTROL_PROTOCOL.md](CONTROL_PROTOCOL.md) | Teensy ownership, `--duty`, WebUI restore |

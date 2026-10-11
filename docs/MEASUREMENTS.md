@@ -7,6 +7,11 @@ glass-to-glass method (10 samples, report median) unless noted.
 **Operator:** Ryan Simpson / AVL  
 **Network profile:** Tailscale (Windows `100.91.25.107` ↔ Jetson `100.93.121.3`)
 
+> **2026-10-10 update:** peer-relay control RTT (38 ms median vs 132 ms DERP),
+> WebRTC 3-camera results and the cellular bitrate ladder are in
+> [RELAY_TELEOP_2026-10-10.md](RELAY_TELEOP_2026-10-10.md). On campus ↔ cellular
+> a direct path is impossible; the target is now **peer-relay**, not direct.
+
 ---
 
 ## Phase 0 — Baseline (JPEG/TCP, 2026-07-27 / 2026-08-04)
