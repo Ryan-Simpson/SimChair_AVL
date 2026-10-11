@@ -27,6 +27,17 @@ Usage (conda OFF, Cyclone set — same as WebUI):
 
 Windows: simchair_sender_dbox.exe  (mode 1 = drive)
 Do NOT also run Chrome stick at the same time (two commanders).
+
+Link-loss watchdog:
+  - No packet for --watchdog-ms (default 450) -> publish estop=True and LATCH.
+    (450 clears the sender's ~300 ms pause on every mode switch.)
+    actuator_node's e-stop zeroes the target with its fastest decel and
+    ignores /cmd_vel while set, so Nav2 cannot take over on link loss.
+  - While latched, e-stop is re-published at 10 Hz and drive packets are
+    ignored. Release: put the sender in park (mode 0), then drive again.
+  - On startup the bridge also waits for park before accepting drive.
+  - Each poll drains the socket and applies only the newest packet, so a
+    burst after a network stall never replays stale commands.
 """
 
 from __future__ import annotations
@@ -61,20 +72,28 @@ def command_qos():
 
 
 class SimChairRosBridge(Node):
-    def __init__(self, udp_port: int, topic: str):
+    def __init__(self, udp_port: int, topic: str, watchdog_s: float):
         super().__init__('simchair_ros_bridge')
         self.pub = self.create_publisher(ActuatorCommand, topic, command_qos())
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('0.0.0.0', udp_port))
-        self.sock.settimeout(0.05)
+        self.sock.setblocking(False)
         self.last_seq = -1
         self.last_print = 0.0
         self.packets = 0
+        # Watchdog: latched until the sender reports park (mode 0).
+        self.watchdog_s = watchdog_s
+        self.last_rx = None          # monotonic time of last valid packet
+        self.latched = True          # start latched: require park first
+        self.tripped = False         # True only after a link-loss trip
+        self.last_estop_pub = 0.0
         self.get_logger().info(
             f'Sim-chair UDP :{udp_port} → {topic} (ActuatorCommand). '
+            f'Watchdog {watchdog_s * 1000:.0f} ms. Put sender in park (0) to arm. '
             f'Teensy stays with actuator_node. Do not use Chrome stick at the same time.'
         )
         self.create_timer(0.01, self._poll_udp)  # 100 Hz poll; sender ~20 Hz
+        self.create_timer(0.02, self._watchdog)  # 50 Hz
 
     def _parse(self, data: bytes):
         text = data.decode(errors='replace').strip()
@@ -101,19 +120,58 @@ class SimChairRosBridge(Node):
             return None
         return steering, throttle, brake, mode
 
-    def _poll_udp(self):
-        try:
-            data, _ = self.sock.recvfrom(256)
-        except socket.timeout:
-            return
-        except OSError as e:
-            self.get_logger().warn(f'UDP error: {e}')
-            return
+    def _publish_estop(self):
+        msg = ActuatorCommand()
+        msg.header = Header()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = ''
+        msg.estop = True
+        msg.mode = 'N'
+        self.pub.publish(msg)
+        self.last_estop_pub = time.monotonic()
 
-        parsed = self._parse(data)
+    def _watchdog(self):
+        now = time.monotonic()
+        if (not self.latched and self.last_rx is not None
+                and now - self.last_rx > self.watchdog_s):
+            self.latched = True
+            self.tripped = True
+            self._publish_estop()
+            self.get_logger().warn(
+                f'WATCHDOG: no packet for {(now - self.last_rx) * 1000:.0f} ms '
+                f'→ E-STOP latched. Put sender in park (0) to re-arm.'
+            )
+        elif self.tripped and now - self.last_estop_pub >= 0.1:
+            self._publish_estop()  # hold e-stop at 10 Hz while latched
+
+    def _poll_udp(self):
+        # Drain everything queued; keep only the newest valid packet.
+        parsed = None
+        while True:
+            try:
+                data, _ = self.sock.recvfrom(256)
+            except BlockingIOError:
+                break
+            except OSError as e:
+                self.get_logger().warn(f'UDP error: {e}')
+                break
+            p = self._parse(data)
+            if p is not None:
+                parsed = p
         if parsed is None:
             return
+        self.last_rx = time.monotonic()
         steering, throttle, brake, mode_i = parsed
+
+        if self.latched:
+            if mode_i != 0:
+                return  # ignore drive packets until park
+            self.latched = False
+            if self.tripped:
+                self.get_logger().warn('Park received → watchdog re-armed, E-STOP released.')
+            else:
+                self.get_logger().info('Park received → armed.')
+            self.tripped = False
 
         # Clamp like a sane teleop range
         steering = max(-1.0, min(1.0, steering))
@@ -160,10 +218,13 @@ def main():
     parser = argparse.ArgumentParser(description='Sim-chair UDP → /avros/actuator_command')
     parser.add_argument('--udp-port', type=int, default=5006)
     parser.add_argument('--topic', default='/avros/actuator_command')
+    parser.add_argument('--watchdog-ms', type=float, default=450.0,
+                        help='E-stop if no packet for this long (latched until park)')
     args = parser.parse_args()
 
     rclpy.init()
-    node = SimChairRosBridge(udp_port=args.udp_port, topic=args.topic)
+    node = SimChairRosBridge(udp_port=args.udp_port, topic=args.topic,
+                             watchdog_s=args.watchdog_ms / 1000.0)
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
