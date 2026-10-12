@@ -19,6 +19,7 @@ if tmux has-session -t simchair 2>/dev/null; then
 fi
 
 tmux new-session -d -s simchair -n mediamtx "$D/run_mediamtx.sh"
+tmux new-window -t simchair -n viewer "$D/run_viewer.sh"
 tmux new-window -t simchair -n rsp "$D/run_rsp.sh"
 if [[ -z "$VIDEO_ONLY" ]]; then
     tmux new-window -t simchair -n actuator "$D/run_actuator.sh"
@@ -32,5 +33,6 @@ tmux new-window -t simchair -n webrtc_front "$D/run_webrtc_cam.sh zed_front 7.5 
 tmux new-window -t simchair -n webrtc_left  "$D/run_webrtc_cam.sh zed_left 15.0 $SIDE_BPS";  sleep 4
 tmux new-window -t simchair -n webrtc_right "$D/run_webrtc_cam.sh zed_right 15.0 $SIDE_BPS"
 tmux list-windows -t simchair -F '#W'
-echo "Video: open windows/multicam_viewer.html on the sim chair (ONE viewer only)."
+TS_IP="$(tailscale ip -4 2>/dev/null || echo 100.93.121.3)"
+echo "Video: open http://$TS_IP:8090/ on the sim chair (ONE viewer only)."
 [[ -z "$VIDEO_ONLY" ]] && echo "Drive: put the chair in park (0) once to arm the bridge."

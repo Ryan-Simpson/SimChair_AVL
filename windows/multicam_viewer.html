@@ -1,8 +1,10 @@
 <!doctype html>
 <!--
   multicam_viewer.html — 3-camera WebRTC (WHEP) viewer for Marvin, with live stats.
-  Open directly in Chrome on the sim chair (double-click). Streams come from
-  MediaMTX on the Jetson (jetson/relay_teleop/start_all.sh).
+  Open http://100.93.121.3:8090/ in Chrome on the sim chair — start_all.sh
+  serves this page from the Jetson. Do NOT double-click the file: a file://
+  page sends "Origin: null", which MediaMTX's CORS doesn't allow, so every
+  WHEP request fails with "Failed to fetch".
 
   Keep this as the ONLY viewer: every extra tab or MediaMTX page doubles the
   cellular upload and was what clogged the link on 2026-10-10.
@@ -58,6 +60,7 @@ function setStatus(text, bad) {
 
 function stop() {
   if (!run) return;
+  run.stopped = true;  // also aborts a connect loop still in progress
   clearInterval(run.timer);
   Object.values(run.cams).forEach(c => c.pc.close());
 }
@@ -121,20 +124,27 @@ async function start() {
   stop();
   document.title = 'Marvin cameras';
   const host = document.getElementById('host').value.trim();
-  run = { t0: performance.now(), started: new Date().toISOString(), host, cams: {}, bad: 0 };
+  const me = run = { t0: performance.now(), started: new Date().toISOString(), host, cams: {}, bad: 0 };
   run.timer = setInterval(sample, 1000);
   try {
     for (const cam of CAMS) {
       setStatus(`connecting ${cam}…`);
-      run.cams[cam] = await connectCam(host, cam);
+      const c = await connectCam(host, cam);
+      // Cut off (or Reconnect pressed) while this camera was connecting: don't keep going.
+      if (me.stopped) { c.pc.close(); return; }
+      me.cams[cam] = c;
       if (cam !== CAMS[CAMS.length - 1]) await new Promise(r => setTimeout(r, 4000));
+      if (me.stopped) return;
     }
     setStatus(`connected ${new Date().toLocaleTimeString()}`);
   } catch (e) {
-    setStatus(String(e.message || e), true);
+    if (!me.stopped) setStatus(String(e.message || e), true);
   }
 }
 
+// Served from the Jetson: talk to whichever host served the page.
+if (location.protocol.startsWith('http')) document.getElementById('host').value = location.hostname;
+if (location.protocol === 'file:') setStatus('Opened as a file — use http://100.93.121.3:8090/ instead (MediaMTX rejects file:// pages)', true);
 document.getElementById('connect').onclick = start;
 document.getElementById('save').onclick = () => {
   if (!run) return;
@@ -145,7 +155,7 @@ document.getElementById('save').onclick = () => {
   a.download = `marvin_video_stats_${run.started.replace(/[:.]/g, '-')}.json`;
   a.click();
 };
-start();
+if (location.protocol !== 'file:') start();
 </script>
 </body>
 </html>
