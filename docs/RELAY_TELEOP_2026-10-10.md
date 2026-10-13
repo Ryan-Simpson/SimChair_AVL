@@ -1,8 +1,10 @@
-# Relay teleop: drive + 3-camera WebRTC over cellular (2026-10-08 → 10-10)
+# Relay teleop: drive + 3-camera WebRTC over cellular (2026-10-08 → 10-12)
 
 **Operator:** Ryan Simpson / AVL  
 **Status:** Driving Marvin from the D-BOX sim chair with 3 live ZED X cameras works,
-indoors, at **1.2 Mbps total video**. Outdoor test still to do.
+indoors, at **1.2 Mbps total video** on a good day. Since 2026-10-12 the bitrate is
+**adaptive** (§4a): on a bad day (~250 kbps) the side cameras pause and the front
+stays live. Outdoor test still to do.
 
 Scripts: [`jetson/relay_teleop/`](../jetson/relay_teleop/) ·
 Viewer: [`windows/multicam_viewer.html`](../windows/multicam_viewer.html) ·
@@ -19,6 +21,7 @@ Bridge: [`jetson/orin_simchair_ros_bridge.py`](../jetson/orin_simchair_ros_bridg
 | Video | 3 × ZED X → `avros_webrtc` (NVENC H.264) → MediaMTX → Chrome (WHEP). 480×300, front 7.5 fps, sides 15 fps. |
 | **Video budget** | **1.2 Mbps total best indoors** (front 500 / sides 350 kbps). 1.5 works but spikier. **1.8 collapses in ~3 s.** |
 | Biggest lesson | Over capacity, cellular doesn't drop — it **queues**. Video *and drive commands* arrive 1–9 s late. |
+| **Adaptive bitrate** (10-12) | `rate_controller` pings the sim chair, cuts bitrate when RTT rises, pauses side cams if still clogged. Same signal, ~5× less capacity than 10-10 → front-only held at 7.5 fps, RTT median 53 ms. |
 
 ---
 
@@ -86,8 +89,9 @@ tmux attach -t simchair                      # look at the logs
 bash jetson/relay_teleop/stop_all.sh         # stop everything it started
 ```
 
-`start_all.sh` starts, in order: MediaMTX, robot_state_publisher, actuator_node,
-the bridge, the three ZEDs (20 s apart), then the three encoders (**4 s apart**).
+`start_all.sh` starts, in order: MediaMTX, the viewer page server (:8090),
+robot_state_publisher, actuator_node, the bridge, the three ZEDs (20 s apart), the rate controller, then the three
+encoders (**4 s apart**). `FIXED_BITRATE=1` skips the rate controller.
 It only touches its own tmux session, so it doesn't disturb other people's
 processes on the Jetson. Requirements: nothing else owns the Teensy (WebUI /
 `avros-webui` stopped) and nothing else runs the ZEDs (percept stack down).
@@ -100,14 +104,18 @@ processes on the Jetson. Requirements: nothing else owns the Teensy (WebUI /
 | `run_rsp.sh` | static TF; **ZEDs hang on "Waiting for valid static transformations" without it** |
 | `run_zed.sh <name> <serial>` | one ZED X with the team's `config/<name>.yaml` unchanged |
 | `run_mediamtx.sh` | stock MediaMTX from `~/IGVC_webrtc/.mediamtx` |
-| `run_webrtc_cam.sh <name> <fps> <bps>` | `avros_webrtc` node for one camera |
+| `run_webrtc_cam.sh <name> <fps> <bps> [side]` | `avros_webrtc` node for one camera; `side` = may be paused to 1 frame / 2 s |
+| `run_rate_controller.sh <total_bps> <front_bps>` | adaptive bitrate for all encoders (§4a) |
+| `run_viewer.sh` | serves `windows/multicam_viewer.html` at `http://<jetson>:8090/` |
 
 Camera serials: front **42569280**, left **43779087**, right **49910017**.
 
 ### Sim chair PC
 
 1. Start `windows/simchair_sender_dbox.exe` (sends `steering,throttle,brake,mode` to `100.93.121.3:5006`, ~20 Hz).
-2. Double-click `windows/multicam_viewer.html` → Chrome. **Close every other video tab.**
+2. Open **http://100.93.121.3:8090/** in Chrome (served by the Jetson). **Close every other
+   video tab.** Don't double-click the .html file: a `file://` page sends `Origin: null`,
+   which MediaMTX's CORS rejects → "Failed to fetch".
 3. Chair: **park (0)** once to arm the bridge → **drive (1)**. Brake = reverse.
 
 Single camera instead: `http://100.93.121.3:8889/zed_front` (MediaMTX's own page).
@@ -165,6 +173,57 @@ outdoors and rerun the ladder (1.2 → 1.8 → 2.5 → 3 Mbps).
 
 ---
 
+## 4a. Adaptive bitrate (2026-10-12, indoors, raining)
+
+Code: `rate_controller` + live bitrate in `avros_webrtc` (IGVC_ROS2
+`feature/avros-webrtc`, commit `4c00046`; details in its README).
+
+```
+rate_controller: ping sim chair 5x/s over Tailscale
+  queue delay = median RTT (1 s) - min RTT (120 s)
+  > 200 ms or > 40% ping loss -> scale x0.7 (1/s)    > 800 ms -> floor 0.25
+  < 80 ms for 2 s while video flows -> +2 %/s       range 0.25-1.5, start 0.6
+  still clogged 3 s at the floor -> side cams to 1 frame / 2 s
+  resume sides after 15 s calm once front alone >= 1.3x the 3-cam floor
+-> /webrtc/bitrate_scale, /webrtc/sides_enabled -> each encoder: bitrate_bps x scale (live)
+```
+
+`nvv4l2h264enc` accepts a new `bitrate` while PLAYING (gst-inspect says
+READY-only): noise test 1000→200→1000→400 kbps measured 1074→318→1112→492, ~1 s to apply.
+
+**The link that day.** Same radio as 10-10 but much less capacity —
+looks like a busy cell, not Marvin's position:
+
+| | 10-10 | 10-12 |
+|---|---|---|
+| RSRP / RSRQ / SINR | −111 / −13 / 0.3 dB | −107 / −12 / **6.2 dB** |
+| Band, bars | LTE B2, 2 | LTE B2, 2 |
+| Video the link held | ~1.2 Mbps | **~200–300 kbps** |
+| Idle ping (no video) | 56 ms | swung 55 ms ↔ 940 ms / 30 % loss within minutes; once ~10 kbps throughput |
+
+**Drives** (viewer on the sim chair, slow speed, e-stop operator):
+
+| Run | Result |
+|---|---|
+| Fixed 1.2 Mbps | front connected, no frames, viewer auto-cutoff in ~15 s |
+| AIMD only (no side pause) | controller pinned at floor; 0.25 × 1.2 Mbps = **~480 kbps actually sent** (NVENC overshoots small CBR targets + IDR every 1 s + overhead). Ping p95 488 ms, max 2.3 s, 6 % loss; viewer cutoff after ~7 min |
+| **AIMD + side pause** | sides paused within ~1 min and stayed paused. **Front: 7.5 fps, 0 stalled samples, video RTT median 53 / p95 256 / max 1183 ms, 0 loss** (last ~100 s). Ping over the drive: median 53, p95 852, max 3404 ms — spikes mostly in the first 3–4 min while it searched |
+
+Lessons:
+- Lowering the floor further doesn't help — the encoder won't go that low.
+  Dropping cameras does. Sides are ~60 % of the load.
+- Start lower (0.3) and pause the sides sooner (~1.5 s) to cut the first-minute spikes.
+- The Jetson went dark once mid-drive with the router still up; journal ends
+  abruptly (no shutdown), power cycle fixed it. Consistent with the known
+  shared-12 V brown-out (IGVC_ROS2 CLAUDE.md), not confirmed.
+- 10-11: the Vultr relay stopped (no shutdown logged); after restart DNS was
+  broken because tailscaled rewrote resolv.conf — fixed with
+  `tailscale set --accept-dns=false` and relinking `/etc/resolv.conf` to
+  `../run/systemd/resolve/stub-resolv.conf`. Without the relay the link falls
+  back to DERP (125–141 ms) and video freezes.
+
+---
+
 ## 5. What went wrong (and the lessons)
 
 1. **Over capacity = huge delay, not loss.** Fixed-bitrate (CBR) video has no
@@ -216,9 +275,10 @@ outdoors and rerun the ladder (1.2 → 1.8 → 2.5 → 3 Mbps).
 
 ## 8. Next steps
 
-1. **Outdoor ladder test** with RSRP/SINR/band logged at each step.
-2. **Adaptive bitrate**: encoder backs off when RTT rises (the real fix for a
-   link whose capacity changes as Marvin moves).
+1. **Outdoor test** with RSRP/SINR/band logged, now with adaptive bitrate on
+   (`MAX_SCALE` up to 2–3 to see what a good link allows).
+2. ~~Adaptive bitrate~~ done 10-12 (§4a). Tune: start 0.3, pause sides after ~1.5 s.
 3. Small video tweaks: minimal browser jitter buffer, longer side-cam IDR interval.
+   Maybe drop side fps when scale is low instead of a hard pause.
 4. Stale-command protection (§6) before any faster or unsupervised driving.
 5. Merge `feature/bridge-watchdog` and `feature/avros-webrtc` once reviewed.
