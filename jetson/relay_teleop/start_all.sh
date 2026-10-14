@@ -2,7 +2,9 @@
 # start_all.sh — bring up drive + 3-camera video in tmux session "simchair"
 #
 # Usage:  bash start_all.sh            # drive + video
+#         DRIVE_MODE=diff bash start_all.sh   # force one mode (default: gear = paddles pick)
 #         VIDEO_ONLY=1 bash start_all.sh
+#         NO_IMU=1 bash start_all.sh   # skip Xsens + IMU bridge (UDP :5007 to the chair PC)
 # Stop:   bash stop_all.sh   (or: tmux kill-session -t simchair)
 # Watch:  tmux attach -t simchair
 #
@@ -23,10 +25,15 @@ fi
 tmux new-session -d -s simchair -n mediamtx "$D/run_mediamtx.sh"
 tmux new-window -t simchair -n viewer "$D/run_viewer.sh"
 tmux new-window -t simchair -n rsp "$D/run_rsp.sh"
+if [[ -z "$NO_IMU" ]]; then
+    tmux new-window -t simchair -n xsens "$D/run_xsens.sh"
+    tmux new-window -t simchair -n imu_bridge "IMU_HZ=${IMU_HZ:-25} $D/run_imu_bridge.sh"
+fi
 if [[ -z "$VIDEO_ONLY" ]]; then
     tmux new-window -t simchair -n actuator "$D/run_actuator.sh"
     sleep 6
-    tmux new-window -t simchair -n bridge "$D/run_bridge_live.sh"
+    tmux new-window -t simchair -n bridge \
+        "DRIVE_MODE=${DRIVE_MODE:-gear} BRIDGE_ARGS='$BRIDGE_ARGS' $D/run_bridge_live.sh"
 fi
 tmux new-window -t simchair -n zed_front "$D/run_zed.sh zed_front 42569280"; sleep 20
 tmux new-window -t simchair -n zed_left  "$D/run_zed.sh zed_left 43779087";  sleep 20

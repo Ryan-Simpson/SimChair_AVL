@@ -11,7 +11,8 @@ Usage (same ROS env as sensors):
   export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
   export CYCLONEDDS_URI=file:///home/dinosaur/IGVC/install/avros_bringup/share/avros_bringup/config/cyclonedds.xml
   export ROS_DOMAIN_ID=42
-  /usr/bin/python3 ~/Documents/SimChair_Teleop/imu_bridge.py --windows-ip 100.91.25.107
+  /usr/bin/python3 ~/SimChair_AVL/jetson/imu_bridge.py --windows-ip 100.91.25.107 [--hz 25]
+(relay_teleop/run_imu_bridge.sh does this.)
 """
 
 import argparse
@@ -27,7 +28,6 @@ from sensor_msgs.msg import Imu
 
 UDP_PORT = 5007
 TARGET_HZ = 50.0
-INTERVAL = 1.0 / TARGET_HZ
 PACKET_FMT = '<IQ8f'  # seq + t_ms + 8 floats = 44 bytes
 PACKET_SIZE = struct.calcsize(PACKET_FMT)
 
@@ -53,8 +53,10 @@ def quat_to_roll_pitch(qx, qy, qz, qw):
 
 
 class ImuBridge(Node):
-    def __init__(self, windows_ip: str, topic=None):
+    def __init__(self, windows_ip: str, topic=None, hz: float = TARGET_HZ):
         super().__init__('imu_bridge')
+        self.hz = hz
+        self.interval = 1.0 / hz
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.dest = (windows_ip, UDP_PORT)
         self.seq = 0
@@ -70,7 +72,7 @@ class ImuBridge(Node):
             self.get_logger().info(f'Listening {t} (sensor QoS)')
 
         self.create_timer(2.0, self._stats)
-        self.get_logger().info(f'IMU bridge → {windows_ip}:{UDP_PORT} @ {TARGET_HZ:.0f} Hz')
+        self.get_logger().info(f'IMU bridge → {windows_ip}:{UDP_PORT} @ {self.hz:.0f} Hz')
 
     def _imu_cb(self, msg: Imu, topic: str):
         self.rx += 1
@@ -82,7 +84,8 @@ class ImuBridge(Node):
             return
 
         now = time.monotonic()
-        if now - self.last_send < INTERVAL:
+        # 2 ms slack: input is 100 Hz, so a strict check rounds 40 ms up to 50
+        if now - self.last_send < self.interval - 0.002:
             return
         self.last_send = now
         self._send(msg)
@@ -122,11 +125,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--windows-ip', default='100.91.25.107')
     parser.add_argument('--topic', default=None, help='Force IMU topic (optional)')
+    parser.add_argument('--hz', type=float, default=TARGET_HZ, help='UDP send rate')
     args = parser.parse_args()
 
     assert PACKET_SIZE == 44, PACKET_SIZE
     rclpy.init()
-    node = ImuBridge(args.windows_ip, args.topic)
+    node = ImuBridge(args.windows_ip, args.topic, args.hz)
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
