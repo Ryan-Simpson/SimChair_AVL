@@ -15,7 +15,8 @@
 //   - dbxLive64.dll in PATH or same directory as executable
 //
 // Build: see CMakeLists.txt
-// Run:   simchair_sender_dbox.exe [--ip <addr>] [--port <n>]
+// Run:   simchair_sender_dbox.exe [--ip <addr>] [--port <n>] [--no-dbox]
+//        --no-dbox: drive only, leave the chair to imu_haptic_receiver.exe
 
 #include <windows.h>  // for Sleep()
 
@@ -52,6 +53,7 @@ struct Config {
 };
 
 static bool g_test_mode = false;
+static bool g_no_dbox   = false;  // chair driven by imu_haptic_receiver instead
 
 static Config ParseArgs(int argc, char* argv[]) {
     Config cfg;
@@ -60,6 +62,7 @@ static Config ParseArgs(int argc, char* argv[]) {
         if      (flag == "--ip"   && i + 1 < argc) cfg.ip   = argv[++i];
         else if (flag == "--port" && i + 1 < argc) cfg.port = std::atoi(argv[++i]);
         else if (flag == "--test") g_test_mode = true;
+        else if (flag == "--no-dbox") g_no_dbox = true;
     }
     return cfg;
 }
@@ -153,7 +156,9 @@ int main(int argc, char* argv[]) {
     }
 
     simchair::DboxMotionController dbox(dbox_cfg);
-    if (!dbox.Initialize(kDboxAppKey, kDboxBuildVer)) {
+    if (g_no_dbox) {
+        printf("D-BOX motion: OFF (--no-dbox)\n");
+    } else if (!dbox.Initialize(kDboxAppKey, kDboxBuildVer)) {
         fprintf(stderr, "D-BOX initialization failed — continuing without motion\n");
     } else if (!dbox.Open()) {
         fprintf(stderr, "D-BOX open failed — continuing without motion\n");

@@ -13,7 +13,10 @@
 #include <iostream>
 #include <atomic>
 #include <chrono>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <string>
 
 #include "DBoxManager.h"
 #include "WashoutFilter.h"
@@ -23,6 +26,7 @@
 static constexpr const char* kAppKey = "CalPolyPomonaDevSim";
 static constexpr int   kAppBuild           = 1000;
 static constexpr int   kUdpPort              = 5007;
+static constexpr float kImuHz                = 25.0f; // must match run_imu_bridge.sh IMU_HZ
 static constexpr int   kDboxStreamMs         = 20;    // 50 Hz
 static constexpr int   kWatchdogMs           = 500;
 static constexpr int   kSocketPollMs         = 20;
@@ -45,6 +49,7 @@ namespace
 {
     DBoxManager* g_DBox = nullptr;
     std::atomic<bool> g_Running{ true };
+    bool g_Engine = false;  // D-BOX engine rumble from accel; off = no idle vibration
 
     BOOL WINAPI OnConsoleEvent(DWORD)
     {
@@ -53,9 +58,37 @@ namespace
     }
 }
 
-int main()
+// imu_haptic_receiver.exe [--pitch g] [--roll g] [--yaw g] [--heave g] [--tilt-rate r]
+//                         [--tilt-hz f] [--heave-hz f] [--comfort c]
+//                         [--release r] [--attitude a] [--engine 0|1]
+static void ParseArgs(int argc, char* argv[], WashoutGains& g, float& comfort)
+{
+    for (int i = 1; i + 1 < argc; i += 2)
+    {
+        const std::string flag = argv[i];
+        const float v = static_cast<float>(std::atof(argv[i + 1]));
+        if      (flag == "--pitch")     g.pitch = v;
+        else if (flag == "--roll")      g.roll = v;
+        else if (flag == "--yaw")       g.yaw = v;
+        else if (flag == "--heave")     g.heave = v;
+        else if (flag == "--tilt-rate") g.tiltRate = v;
+        else if (flag == "--release")   g.releaseRate = v;
+        else if (flag == "--attitude")  g.attitude = v;
+        else if (flag == "--engine")    g_Engine = v != 0.0f;
+        else if (flag == "--tilt-hz")   g.tiltCutoff = v;
+        else if (flag == "--heave-hz")  g.heaveCutoff = v;
+        else if (flag == "--comfort")   comfort = v;
+        else std::cerr << "unknown flag " << flag << "\n";
+    }
+}
+
+int main(int argc, char* argv[])
 {
     SetConsoleCtrlHandler(OnConsoleEvent, TRUE);
+
+    WashoutGains gains;
+    float comfort = kComfortScale;
+    ParseArgs(argc, argv, gains, comfort);
 
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
@@ -90,7 +123,7 @@ int main()
 
     DBoxManager dbox;
     g_DBox = &dbox;
-    WashoutFilter washout(50.0f, kComfortScale);
+    WashoutFilter washout(kImuHz, comfort, gains);
 
     dbox.Initialize(kAppKey, kAppBuild);
     dbox.RegisterEvent(SIM_CONFIG, dbox::EM_CONFIG_UPDATE, SimConfig::GetStructInfo());
@@ -102,14 +135,22 @@ int main()
     dbox.PostEvent(SIM_CONFIG, dbox.GetSimConfig());
     dbox.PostEvent(MOTION_CONFIG, dbox.GetMotionConfig());
     dbox.Start();
-    dbox.setTelemetry(0, 0, 0, 750.0f, 0);
+    dbox.setTelemetry(0, 0, 0, g_Engine ? 750.0f : 0.0f, 0);
     dbox.StartPeriodicStreaming(MOTION_DATA, kDboxStreamMs);
 
-    std::cout << "IMU haptic receiver on UDP " << kUdpPort << " (50 Hz washout)\n";
-    std::cout << "Watchdog: " << kWatchdogMs << " ms → ramp to neutral\n";
+    std::cout << "IMU haptic receiver on UDP " << kUdpPort << " (" << kImuHz << " Hz washout)\n";
+    std::cout << "Watchdog: " << kWatchdogMs << " ms -> ramp to neutral\n";
+    printf("Gains: pitch %.2f roll %.2f yaw %.2f heave %.2f  tilt-rate %.2f/s  tilt-hz %.2f  heave-hz %.2f  comfort %.2f\n",
+           gains.pitch, gains.roll, gains.yaw, gains.heave, gains.tiltRate, gains.tiltCutoff,
+           gains.heaveCutoff, comfort);
+    printf("       release %.2f/s  attitude %.2f  engine %s\n",
+           gains.releaseRate, gains.attitude, g_Engine ? "on" : "off");
 
     auto lastPacket = std::chrono::steady_clock::now();
     uint32_t lastSeq = 0;
+    auto lastPrint = lastPacket;
+    uint32_t rxSincePrint = 0;
+    float shownPitch = 0, shownRoll = 0, shownHeave = 0;
 
     while (g_Running)
     {
@@ -121,7 +162,8 @@ int main()
         const auto now = std::chrono::steady_clock::now();
         const float dt = kSocketPollMs / 1000.0f;
 
-        if (n == sizeof(pkt) && pkt.seq > lastSeq)
+        // A big drop in seq means imu_bridge restarted (it counts from 1 again)
+        if (n == sizeof(pkt) && (pkt.seq > lastSeq || pkt.seq + 1000 < lastSeq))
         {
             lastSeq = pkt.seq;
             lastPacket = now;
@@ -129,16 +171,18 @@ int main()
             float pitch, roll, heave;
             washout.Update(
                 pkt.accel_x, pkt.accel_y, pkt.accel_z,
-                pkt.roll, pkt.pitch,
+                pkt.roll, pkt.pitch, pkt.gyro_z,
                 pitch, roll, heave);
 
             // Engine feel from forward accel
             float load = (pkt.accel_x > 0) ? pkt.accel_x / 4.0f : 0.0f;
             if (load > 1.0f) load = 1.0f;
-            float rpm = 750.0f + load * (3500.0f - 750.0f);
-            float torque = load * 450.0f;
+            float rpm = g_Engine ? 750.0f + load * (3500.0f - 750.0f) : 0.0f;
+            float torque = g_Engine ? load * 450.0f : 0.0f;
 
             dbox.setTelemetry(pitch, roll, heave, rpm, torque);
+            shownPitch = pitch; shownRoll = roll; shownHeave = heave;
+            ++rxSincePrint;
         }
         else
         {
@@ -148,13 +192,23 @@ int main()
             {
                 washout.RampToNeutral(dt);
                 float p, r, h;
-                washout.Update(0, 0, 0, 0, 0, p, r, h);
-                dbox.setTelemetry(p, r, h, 750.0f, 0);
+                washout.Update(0, 0, 0, 0, 0, 0, p, r, h);
+                dbox.setTelemetry(p, r, h, g_Engine ? 750.0f : 0.0f, 0);
+                shownPitch = p; shownRoll = r; shownHeave = h;
             }
+        }
+
+        if (now - lastPrint >= std::chrono::seconds(1))
+        {
+            printf("rx %2u/s  pitch %+.3f  roll %+.3f  heave %+.3f%s\n", rxSincePrint,
+                   shownPitch, shownRoll, shownHeave,
+                   rxSincePrint ? "" : "  (no IMU: ramping to neutral)");
+            rxSincePrint = 0;
+            lastPrint = now;
         }
     }
 
-    dbox.setTelemetry(0, 0, 0, 750.0f, 0);
+    dbox.setTelemetry(0, 0, 0, g_Engine ? 750.0f : 0.0f, 0);
     Sleep(1000);
     dbox.StopPeriodicStreaming();
     dbox.Shutdown();

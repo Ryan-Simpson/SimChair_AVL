@@ -11,10 +11,28 @@
  * All outputs clamped to comfort envelope (default 50% of full range).
  */
 
+// Defaults from the 2026-10-14 drive: heave 0.25 buried acceleration under
+// track buzz, and pitch 0.15 at 3 deg/s gave only ~0.09 for Marvin's
+// 0.3 m/s^2 ramp. Override per run with imu_haptic_receiver.exe flags.
+struct WashoutGains
+{
+    float pitch       = 0.60f;  // forward/brake accel -> pitch (negative flips direction)
+    float roll        = 0.40f;  // lateral accel -> roll
+    float yaw         = 0.30f;  // yaw rate (rad/s) -> roll, so pivot turns are felt
+    float heave       = 0.0f;   // vertical transients -> heave (off: felt as constant buzz)
+    float tiltCutoff  = 0.8f;   // Hz, LPF on accel for tilt
+    float heaveCutoff = 1.5f;   // Hz, HPF on vertical accel
+    float tiltRate    = 0.6f;   // normalized units/s, tilting away from centre
+    float releaseRate = 0.15f;  // normalized units/s, tilting back: a 1.3 s speed-up
+                                // holds ~2-3 s and feels like a push, not a bump
+    float attitude    = 0.0f;   // share of ground roll/pitch copied (was 0.3: random pitching)
+};
+
 class WashoutFilter
 {
 public:
-    WashoutFilter(float sampleHz = 50.0f, float comfortScale = 0.5f);
+    WashoutFilter(float sampleHz = 50.0f, float comfortScale = 0.5f,
+                  const WashoutGains& gains = WashoutGains{});
 
     /**
      * Update with IMU body-frame linear acceleration (m/s²) and roll/pitch (rad).
@@ -22,7 +40,7 @@ public:
      */
     void Update(
         float accelX, float accelY, float accelZ,
-        float rollRad, float pitchRad,
+        float rollRad, float pitchRad, float yawRate,
         float& outPitch, float& outRoll, float& outHeave);
 
     /** Ramp outputs toward zero (call on packet loss). dt in seconds. */
@@ -47,6 +65,7 @@ private:
     float m_LpfAx{};
     float m_LpfAy{};
     float m_LpfAz{};
+    float m_LpfYaw{};
 
     // HPF state (heave)
     float m_HpfAz{};
@@ -57,11 +76,5 @@ private:
     float m_OutRoll{};
     float m_OutHeave{};
 
-    // Gains (tune on stands)
-    static constexpr float kPitchGain   = 0.15f;  // forward/brake accel → pitch
-    static constexpr float kRollGain    = 0.20f;  // lateral accel → roll
-    static constexpr float kHeaveGain   = 0.25f;  // vertical transients → heave
-    static constexpr float kTiltCutoff  = 0.8f;   // Hz
-    static constexpr float kHeaveCutoff = 1.5f;   // Hz
-    static constexpr float kMaxTiltRate = 3.0f;   // deg/s equivalent (normalized/s)
+    WashoutGains m_Gains;
 };
