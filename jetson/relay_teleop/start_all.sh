@@ -38,8 +38,10 @@ if [[ -z "$VIDEO_ONLY" ]]; then
 fi
 tmux new-window -t simchair -n zed_front "$D/run_zed.sh zed_front 42569280"; sleep 20
 if [[ -z "$FRONT_ONLY" ]]; then
-    tmux new-window -t simchair -n zed_left  "$D/run_zed.sh zed_left 43779087";  sleep 20
-    tmux new-window -t simchair -n zed_right "$D/run_zed.sh zed_right 49910017"; sleep 25
+    # Left/right serials swapped vs avros sensors.launch.py (its right serial is a TODO);
+    # confirmed from the chair 2026-10-14: 49910017 is the left camera.
+    tmux new-window -t simchair -n zed_left  "$D/run_zed.sh zed_left 49910017";  sleep 20
+    tmux new-window -t simchair -n zed_right "$D/run_zed.sh zed_right 43779087"; sleep 25
     TOTAL_BPS=$((FRONT_BPS + 2 * SIDE_BPS))
 else
     sleep 5; TOTAL_BPS=$FRONT_BPS
