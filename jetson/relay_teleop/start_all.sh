@@ -4,6 +4,7 @@
 # Usage:  bash start_all.sh            # drive + video
 #         DRIVE_MODE=diff bash start_all.sh   # force one mode (default: gear = paddles pick)
 #         VIDEO_ONLY=1 bash start_all.sh
+#         FRONT_ONLY=1 bash start_all.sh   # front camera only (no side ZEDs/encoders)
 #         NO_IMU=1 bash start_all.sh   # skip Xsens + IMU bridge (UDP :5007 to the chair PC)
 # Stop:   bash stop_all.sh   (or: tmux kill-session -t simchair)
 # Watch:  tmux attach -t simchair
@@ -36,12 +37,19 @@ if [[ -z "$VIDEO_ONLY" ]]; then
         "DRIVE_MODE=${DRIVE_MODE:-gear} BRIDGE_ARGS='$BRIDGE_ARGS' $D/run_bridge_live.sh"
 fi
 tmux new-window -t simchair -n zed_front "$D/run_zed.sh zed_front 42569280"; sleep 20
-tmux new-window -t simchair -n zed_left  "$D/run_zed.sh zed_left 43779087";  sleep 20
-tmux new-window -t simchair -n zed_right "$D/run_zed.sh zed_right 49910017"; sleep 25
-[[ -z "$FIXED_BITRATE" ]] && tmux new-window -t simchair -n rate "$D/run_rate_controller.sh $((FRONT_BPS + 2 * SIDE_BPS)) $FRONT_BPS"
-tmux new-window -t simchair -n webrtc_front "$D/run_webrtc_cam.sh zed_front 7.5 $FRONT_BPS"; sleep 4
-tmux new-window -t simchair -n webrtc_left  "$D/run_webrtc_cam.sh zed_left 15.0 $SIDE_BPS side";  sleep 4
-tmux new-window -t simchair -n webrtc_right "$D/run_webrtc_cam.sh zed_right 15.0 $SIDE_BPS side"
+if [[ -z "$FRONT_ONLY" ]]; then
+    tmux new-window -t simchair -n zed_left  "$D/run_zed.sh zed_left 43779087";  sleep 20
+    tmux new-window -t simchair -n zed_right "$D/run_zed.sh zed_right 49910017"; sleep 25
+    TOTAL_BPS=$((FRONT_BPS + 2 * SIDE_BPS))
+else
+    sleep 5; TOTAL_BPS=$FRONT_BPS
+fi
+[[ -z "$FIXED_BITRATE" ]] && tmux new-window -t simchair -n rate "$D/run_rate_controller.sh $TOTAL_BPS $FRONT_BPS"
+tmux new-window -t simchair -n webrtc_front "$D/run_webrtc_cam.sh zed_front 7.5 $FRONT_BPS"
+if [[ -z "$FRONT_ONLY" ]]; then
+    sleep 4; tmux new-window -t simchair -n webrtc_left  "$D/run_webrtc_cam.sh zed_left 15.0 $SIDE_BPS side"
+    sleep 4; tmux new-window -t simchair -n webrtc_right "$D/run_webrtc_cam.sh zed_right 15.0 $SIDE_BPS side"
+fi
 tmux list-windows -t simchair -F '#W'
 TS_IP="$(tailscale ip -4 2>/dev/null || echo 100.93.121.3)"
 echo "Video: open http://$TS_IP:8090/ on the sim chair (ONE viewer only)."
