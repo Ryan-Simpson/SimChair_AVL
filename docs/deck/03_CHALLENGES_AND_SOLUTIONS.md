@@ -46,7 +46,7 @@ Solved issues and architecture choices that keep the demo path reliable. Open pr
 |-------|---------|-----------------|-----------|
 | **Motor degradation** | Fine at first launch; later hard to move / unresponsive | Teensy firmware limiter or Spark current limit | A/B with phone-joystick Teensy firmware |
 | **Kart tilts right** | Drift/tilt right despite symmetric L/R commands | Hardware / mismatched Spark configs | Compare left vs right Spark parameters |
-| **IMU → D-BOX E2E** | `imu_bridge.py` sends UDP 5007 | Washout/listener path not demo-verified | Live run: confirm chair motion from vehicle IMU |
+| **IMU → D-BOX E2E** | Raw IMU accel made the chair pitch/roll at random and buzz | Skid-steer track judder (~0.8 m/s²) swamps real accel (~0.3 m/s²) | Cue from wheel-encoder accel + gyro yaw rate; heave off; fast lean-in, slow release (2026-10-14) |
 | **Tailscale DERP** | Often relayed (lax), not direct | NAT/firewall | Aim for **direct** before latency claims |
 
 ---

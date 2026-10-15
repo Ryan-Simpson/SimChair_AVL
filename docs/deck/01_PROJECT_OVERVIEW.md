@@ -24,7 +24,7 @@ Give the operator a human level of sight and realistic physical feedback while d
 
 1. **Vision**: three ZED X cameras → three panoramic monitors
 2. **Control**: Thrustmaster wheel/pedals → differential drive in real time
-3. **Haptics**: vehicle IMU accelerations → D-BOX chair motion (path ready; end-to-end demo verification still required)
+3. **Haptics**: vehicle IMU accelerations → D-BOX chair motion (working since 2026-10-14)
 
 All links run over **Tailscale VPN** (no line-of-sight radio required).
 
@@ -44,7 +44,7 @@ Extension of the AVL **IGVC** robotics platform: teleop code lives outside `/hom
 | Sim-chair wheel/pedal → kart motors | Working |
 | Three live JPEG camera streams on monitors | Working (UDP primary ~1280×720 @ 30) |
 | D-BOX SDK integrated on Windows | Working |
-| Vehicle IMU → D-BOX chair cueing | Script ready (`imu_bridge.py`); E2E chair motion needs demo verification |
+| Vehicle IMU → D-BOX chair cueing | Working (2026-10-14): wheel-encoder accel + gyro yaw cues, driver-approved |
 | Motor drive via sim chair | Working with `--duty` (UL/UR); velocity mode often purple |
 | H.265 primary video path | Experimental; UDP JPEG is current primary |
 

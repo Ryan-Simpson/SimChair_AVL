@@ -108,7 +108,7 @@ processes on the Jetson. Requirements: nothing else owns the Teensy (WebUI /
 | `run_rate_controller.sh <total_bps> <front_bps>` | adaptive bitrate for all encoders (§4a) |
 | `run_viewer.sh` | serves `windows/multicam_viewer.html` at `http://<jetson>:8090/` |
 
-Camera serials: front **42569280**, left **43779087**, right **49910017**.
+Camera serials: front **42569280**, left **49910017**, right **43779087** (corrected 2026-10-14; this line originally had left/right swapped, copied from avros sensors.launch.py).
 
 ### Sim chair PC
 

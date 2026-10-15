@@ -7,7 +7,7 @@ Priority-ordered next steps and the upgrade phases that move the stack from “d
 ## Priority order (do these first)
 
 1. **Motors**: re-verify spin / Spark / measured RPM (WebUI + sim-chair); chase degradation and right-tilt  
-2. **IMU → D-BOX end-to-end**: `imu_bridge.py` exists; confirm chair motion from vehicle IMU on a live run  
+2. **IMU → D-BOX**: done 2026-10-14; next is tuning with more drivers and stronger accel if Marvin's speed cap is raised  
 3. **Video quality**: UDP JPEG at 720p30 is in; next H.265 NVENC / ZED stream for bandwidth  
 4. **Closed-loop velocity**: restore reliable `--velocity` (encoders / Spark PID) so duty is not permanent  
 5. **Latency**: measure glass-to-glass on **direct** Tailscale; target &lt;150 ms median  
@@ -21,7 +21,7 @@ Priority-ordered next steps and the upgrade phases that move the stack from “d
 |-----------|---------|--------|-----------|
 | **Video** | Chunked JPEG/UDP, 1280×720 @ 30 | H.265 NVENC, RTP/UDP, ≥1080p | ZED stream / GStreamer RTP |
 | **Control** | UDP CSV ~20 Hz; **duty** default | Seq + timestamps; reliable velocity PID | Failsafe + encoder bring-up |
-| **Haptics** | Bridge script; E2E not verified | Classical washout; ramp to neutral on loss | UDP 5007 → washout → D-BOX |
+| **Haptics** | Working 2026-10-14 (encoder + gyro cues) | Classical washout; ramp to neutral on loss | UDP 5007 → washout → D-BOX |
 | **Motors** | Duty works; velocity/purple issues; tilt | Sustained smooth closed-loop | Teensy/Spark A/B debug |
 | **Ops** | Manual tmux; iptables lost on reboot | systemd + iptables-persistent | Demo reliability |
 

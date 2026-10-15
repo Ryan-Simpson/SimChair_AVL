@@ -48,15 +48,28 @@ windows_camera_receiver_udp.py (Windows)
 
 ## Haptic Feedback Flow
 
+Working since 2026-10-14 (`windows/start_chair.bat`):
+
 ```
-Kart IMU (Xsens preferred; ZED front IMU fallback)
+Xsens MTi-680G /imu/data (100 Hz) + /filter/free_acceleration
+/wheel_odom (SPARK-measured motor speed, 20 Hz)
         ↓
-imu_bridge.py → UDP binary @ 50 Hz port 5007
+jetson/imu_bridge.py (relay_teleop/run_imu_bridge.sh) → UDP 44-byte packet @ 25 Hz, port 5007
+  ax = d/dt wheel speed, ay = speed × gyro yaw rate (blended with Xsens accel only
+  while they agree), az = Xsens gravity-free z, gz = gyro yaw rate
+        ↓  Tailscale
+windows/imu_haptic_receiver.exe (source windows/dbox/imu_receiver)
+  washout: pitch from ax, roll from ay + yaw rate; fast lean-in, slow release;
+  heave / engine rumble / ground tilt off; ramp to neutral after 500 ms of no packets
         ↓
-Windows washout / D-BOX listener
-  - APP_KEY: "CalPolyPomonaDevSim"
-  - Also: simchair_sender_dbox.exe can drive chair from local inputs
+D-BOX LiveMotion (APP_KEY "CalPolyPomonaDevSim"), 50 Hz
 ```
+
+`simchair_sender_dbox.exe --no-dbox` drives Marvin without moving the chair.
+Without the flag the sender instead rocks the chair from the driver's own inputs
+(the older behaviour); only one program can own the chair. Raw accelerometer
+cueing was tried first and rejected: skid-steer track judder swamps Marvin's real
+accelerations (see `windows/dbox/README.md`).
 
 ## ROS2 Environment (Jetson)
 
@@ -72,4 +85,4 @@ export ROS_DOMAIN_ID=42
 **ZED:** `publish_tf:=true` `publish_urdf:=true` + serials — see `LAUNCH_PROCEDURE.md`.  
 **Never modify** `/home/dinosaur/IGVC/`.
 
-**Script locations:** Jetson `~/Documents/SimChair_Teleop/` · Windows `C:\Users\VRX 226\cursor-test\windows\`.
+**Script locations:** Jetson `~/SimChair_AVL/` · Windows `C:\Users\VRX 226\simchair_teleop\windows\` (legacy: `~/Documents/SimChair_Teleop/`, `cursor-test\windows\`).

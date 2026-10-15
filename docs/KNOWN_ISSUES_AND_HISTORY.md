@@ -14,14 +14,15 @@
 | D-BOX SDK integration | ✅ Working | DBoxManager class, async streaming |
 | ZED camera launch | ✅ Working | Owned by **percept-stack**; do not dual-launch |
 | WebUI restore after sim chair | ✅ Working | Restart full `avros-webui` service |
+| Relay teleop video (3× WebRTC) | ✅ Working (2026-10) | NVENC H.264 → MediaMTX, Tailscale peer relay, adaptive bitrate; `relay_teleop/start_all.sh` |
+| Ackermann / gear select | ✅ Working (2026-10-13) | Paddles: 1 = diff, 2 = Ackermann, 0/3 = off; bridge clips to actuator max 0.40 m/s |
+| IMU → D-BOX chair | ✅ Working (2026-10-14) | Encoder accel + gyro yaw cues → `imu_haptic_receiver.exe`; `windows/start_chair.bat` |
 
 ## What's In Progress
 
 | Feature | Status | Blocker |
 |---------|--------|---------|
-| Stable 3-cam teleop video | 🔄 Open | See `FRESH_CHAT_VIDEO_PROMPT.md` — Tailscale + ZED native ×3 |
-| GStreamer H.264 / H.265 / WebRTC | 🔄 Candidate | Alternative to ZED native for lossy links |
-| D-BOX ↔ IMU integration | 🔄 Script ready | `imu_bridge.py` → UDP 5007; E2E chair cueing needs demo verify |
+| Cellular capacity | 🔄 Open | Night 10–13 Mbps up, daytime ~250 kbps; 2026-10-14 link broke near the building on the return leg — dead zone or busy cell? Repeat the route logging router RSRP/SINR |
 | Closed-loop velocity drive | 🔄 Open | `--velocity` often Sparks purple; use duty / WebUI path |
 
 ---
@@ -38,6 +39,22 @@
 **Symptom:** When driving forward, kart drifts/tilts right regardless of steering input.  
 **Ruled out:** Software (commands show symmetric L/R RPM values).  
 **Suspected:** Hardware — one motor is weaker or Spark MAX configs are mismatched between left and right.
+
+### ZED left/right serials swapped in avros sensors.launch.py (2026-10-14)
+**Symptom:** the left camera's picture shows up as right and vice versa.  
+**Cause:** `avros_bringup/launch/sensors.launch.py` assigns left = 43779087, right = 49910017 (its right serial is marked TODO). Checked from the chair: **left = 49910017, right = 43779087** (front 42569280).  
+**Fix:** `relay_teleop/start_all.sh` uses the corrected serials. The IGVC file is unchanged (team code) — the team still needs to fix it.
+
+### ZED won't open after a power cut (2026-10-14)
+**Symptom:** `CAMERA MOTION SENSORS NOT DETECTED` / `CAMERA STREAM FAILED TO START` for one camera; the kernel still detects it at boot.  
+**Fix order:** `stop_all.sh` + `sudo systemctl restart nvargus-daemon`, then start again. If it still fails, power Marvin fully off and on (that fixed the left ZED), then reseat its GMSL cable. `FRONT_ONLY=1` drives with the front camera meanwhile.
+
+### Jetson loses power
+**Symptom:** Marvin drops off Tailscale mid-session; the journal just ends. Happened several times 2026-10-12 to 10-14.  
+**Suspected:** 12 V brown-out. Check power first when the link vanishes.
+
+### Raw IMU accel is useless for chair cues on skid-steer (2026-10-14)
+Track judder is ~0.8 m/s² (peaks 3–5) while Marvin's real speed changes are ~0.3 m/s², so raw accelerometer made the chair pitch/roll at random and heave buzz. The chair now uses wheel-encoder acceleration and gyro yaw rate; see `windows/dbox/README.md`.
 
 ### GStreamer Black Screen
 **Symptom:** Windows connects to RTSP server (no 503), pipeline creates on Jetson, but video is black with no frames.  
@@ -143,7 +160,7 @@ Conda is installed on the Jetson and intercepts the `python3` command, breaking 
 ## Pending Next Steps (Priority Order)
 
 1. **Motors** — re-verify spin / Spark / meas RPM (WebUI + sim-chair)
-2. **IMU → D-BOX end-to-end** — `imu_bridge` exists; confirm chair motion from vehicle IMU
+2. **Cellular dead zone vs busy cell** — repeat the lab → outside → back route logging router RSRP/SINR (IMU → D-BOX is done, 2026-10-14)
 3. **Video quality** — JPEG works; optional `pub_downscale_factor:=1.0` / HD for stills; H.265 later
 4. **Latency measurement** — target under 150ms glass-to-glass when on direct Tailscale
 5. **Keep docs/scripts in sync** — edit in `cursor-test\jetson\`, push to `~/Documents/SimChair_Teleop/`
@@ -153,7 +170,7 @@ Conda is installed on the Jetson and intercepts the `python3` command, breaking 
 ## Team Constraints
 
 - **NEVER modify files inside `/home/dinosaur/IGVC/`** — shared IGVC competition code
-- Windows launch dir: `C:\Users\VRX 226\cursor-test\windows\` (legacy: `test\`)
-- Jetson teleop dir: `~/Documents/SimChair_Teleop/`
+- Windows launch dir: `C:\Users\VRX 226\simchair_teleop\windows\` (git working copy, branch `feature/bridge-watchdog`; legacy: `cursor-test\windows\`)
+- Jetson teleop dir: `~/SimChair_AVL/` (scp-deployed copy of this repo; legacy: `~/Documents/SimChair_Teleop/`)
 - iptables rules don't persist across reboots — must re-run every session (or use `orin_launch_all.sh`; opens TCP+UDP 9001–9003)
 - SCP/SSH key may be missing — use Tailscale HTTP (`python -m http.server`) to move files

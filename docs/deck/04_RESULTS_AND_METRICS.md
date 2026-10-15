@@ -16,7 +16,7 @@ Baseline recorded **2026-07-27** (Ryan Simpson / AVL). TCP JPEG re-verified **20
 | Three-camera JPEG streaming | Working | **UDP** 9001-9003 chunked JPEG (TCP legacy) |
 | D-BOX SDK on Windows | Working | LiveMotion app key integrated |
 | ZED multi-camera launch | Working | 25 s stagger; TF/URDF flags required |
-| Vehicle IMU → D-BOX chair | Not yet verified E2E | Bridge script ready (`imu_bridge.py`) |
+| Vehicle IMU → D-BOX chair | Working (2026-10-14) | Encoder + gyro cues → `imu_haptic_receiver.exe` |
 
 ---
 
@@ -59,8 +59,8 @@ Baseline recorded **2026-07-27** (Ryan Simpson / AVL). TCP JPEG re-verified **20
 | Metric | Baseline | Target |
 |--------|----------|--------|
 | IMU topic | `/imu/data` (Xsens MTi-680G) | Same |
-| Bridge rate | Script @ 50 Hz design | Confirmed 50 Hz on wire |
-| IMU → chair path | Not E2E verified | UDP 5007 → washout → D-BOX |
+| Bridge rate | Script @ 50 Hz design | 25 Hz on the wire, 0 lost in 180 s over cellular (2026-10-14) |
+| IMU → chair path | Working 2026-10-14 | UDP 5007 → washout → D-BOX |
 | Packet-loss chair behavior | N/A | Ramp to neutral ≥1 s |
 
 ---

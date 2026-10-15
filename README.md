@@ -36,13 +36,16 @@ The car already runs `percept-stack` (cameras, Argus, costmap) and WebUI. This r
 
 ## Status
 
+Current setup (2026-10-14): **relay teleop**. How to start it: [docs/START_TELEOP.md](docs/START_TELEOP.md).
+
 | Path | State |
 |------|--------|
-| Wheel → ROS → motors | Working. Use `--ros-drive`. Close the Chrome stick. |
-| Front H.265 (ZED native) | Working. Best picture so far. |
-| Three H.265 streams over Tailscale | Opens, then freezes / smears under load. Do not use for demos. |
-| JPEG/UDP ×3 | Stable-ish with percept up. Softer image. Fallback only. |
-| IMU → D-BOX | Bridge exists. End-to-end chair feel still needs a live check. |
+| Relay teleop: 3× ZED → NVENC H.264 → MediaMTX WebRTC, browser viewer | Working over cellular via the Tailscale peer relay, with adaptive bitrate. Full rate at night (~2.7 Mbps up); daytime cell capacity can drop to ~250 kbps. `jetson/relay_teleop/start_all.sh`. |
+| Wheel → `/avros/actuator_command` | Working. Paddle gears: 1 = differential, 2 = Ackermann, 0/3 = off. |
+| IMU → D-BOX | Working and approved in the chair 2026-10-14: wheel-encoder accel + gyro yaw cues → washout → chair. `windows/start_chair.bat`, details in [windows/dbox/README.md](windows/dbox/README.md). |
+| Front H.265 (ZED native) | Older path. Superseded by relay teleop. |
+| Three H.265 streams over Tailscale | Older path. Freezes / smears under load. |
+| JPEG/UDP ×3 | Older fallback. |
 
 **Do not** run JPEG and H.265 at the same time. **Do not** run `orin_launch_all.sh` while percept is up.
 

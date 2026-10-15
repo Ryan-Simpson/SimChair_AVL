@@ -79,7 +79,7 @@ ZED X → ROS2 raw Image
 
 Target: **1280×720 @ 30 fps**, JPEG q≈85. Chunks ≤1200 bytes (Tailscale MTU).
 
-## Haptic path (ready for E2E verify)
+## Haptic path (working 2026-10-14; current flow in docs/SYSTEM_ARCHITECTURE.md)
 
 ```
 Xsens IMU → ROS2 /imu/data

@@ -23,7 +23,7 @@ What a live lab demo shows today, how to start it, and what not to over-claim.
 | Control | Wheel → UDP 5006 → `orin_vehicle_controller.py --duty` → Teensy | Working |
 | Video | ZED → `orin_camera_sender_udp.py` → UDP JPEG 9001-9003 → `windows_camera_receiver_udp.py` | Working |
 | Haptics | Local input→D-BOX via sender exe | Available |
-| Haptics | Vehicle IMU → UDP 5007 → washout → D-BOX | Do not claim unless verified that day |
+| Haptics | Vehicle IMU/encoder cues → UDP 5007 → washout → D-BOX (`start_chair.bat`) | Working 2026-10-14 |
 
 **Do not claim unless checked that day:** H.265 primary, glass-to-glass &lt;150 ms, full IMU→chair washout, perfect sustained motors.
 

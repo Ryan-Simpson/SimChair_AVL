@@ -51,8 +51,8 @@ UDP JPEG primary path added 2026-08-07 — log new glass-to-glass / bandwidth un
 | Metric | Value | Target (post Phase 3) |
 |--------|-------|------------------------|
 | IMU topic | `/imu/data` (Xsens MTi-680G) | Same |
-| IMU publish rate | _TBD — `ros2 topic hz /imu/data`_ | Bridge at 50 Hz |
-| IMU → chair path | Not wired | UDP 5007 → washout → D-BOX |
+| IMU publish rate | 100 Hz (measured 2026-10-14) | Bridge at 50 Hz (25 Hz in use) |
+| IMU → chair path | Not wired → working 2026-10-14 (see Phase 3) | UDP 5007 → washout → D-BOX |
 | Chair packet-loss behavior | N/A | Ramp to neutral ≥1 s |
 
 ---
@@ -98,15 +98,18 @@ _Fill after deploying updated `orin_vehicle_controller.py` and Teensy watchdog._
 
 ## Phase 3 — Haptics
 
-_Fill after `imu_bridge.py` + `ImuHapticReceiver` running._
+Measured 2026-10-14, Marvin outdoors at night over cellular, driver in the chair.
 
 | Metric | Before | After | Pass? |
 |--------|--------|-------|-------|
-| Bridge rate | N/A | | 50 Hz |
-| Braking pitch felt | No | | Yes (stands test) |
-| Cornering roll felt | No | | Yes |
-| Bump heave felt | No | | Yes |
-| Packet-loss ramp | N/A | | ≥1 s to neutral |
+| Bridge rate | N/A | 25 Hz, 0 of 4,496 packets lost over 180 s, max gap 0.14 s | Yes (25 Hz chosen to save uplink; target was 50) |
+| Xsens `/imu/data` rate | TBD | 100 Hz | Yes |
+| Yaw rate vs command (diff mode) | N/A | steer +0.24 → +0.39 rad/s (expected 0.36); −0.2 → −0.35 to −0.43 | Yes |
+| Braking / speed-up pitch felt | No | Yes, from wheel-encoder accel (raw accel was random) | Yes (driver approved) |
+| Cornering / pivot roll felt | No | Yes, speed × yaw rate + yaw rate | Yes (driver approved) |
+| Bump heave | No | Turned off on purpose: track judder made it a constant buzz | n/a |
+| Packet-loss ramp | N/A | Ramps to neutral within ~1 s after 500 ms with no packets | Yes |
+| Accel noise, parked / driving | — | 0.04 / 0.8 m/s² (peaks 3–5), real speed changes ~0.3 m/s² | — |
 
 ---
 

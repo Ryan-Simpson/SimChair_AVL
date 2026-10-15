@@ -31,9 +31,12 @@ Legacy Windows runtime: `C:\Users\VRX 226\test\` (prefer `cursor-test\windows\`)
 | `windows_zed_stream_receiver.py` | ZED SDK stream | Experimental |
 | `windows_gstreamer_rtp_receiver.py` | RTP/UDP H.264 | Experimental |
 | `windows_control_status.py` | UDP 5008 link status | Working |
-| `windows_imu_washout_test.py` | Haptics bench / washout test | Working |
-| `windows_haptic_receiver.py` | IMU washout console | Working |
-| `start_all.bat` | One-shot launcher (`VIDEO_MODE=udp` default) | Working |
+| `imu_haptic_receiver.exe` | UDP 5007 cues → washout → D-BOX chair (source `dbox/imu_receiver`, flags in `dbox/README.md`) | **In use** (2026-10-14) |
+| `start_chair.bat` | Relay teleop chair side: sender `--no-dbox` + IMU chair + viewer | **In use** |
+| `dbox/` | C++ sources for the sender and the IMU chair receiver (CMake) | Builds |
+| `windows_haptic_receiver.py` | IMU washout console (prints only, no chair) | Debug tool |
+| `windows_imu_washout_test.py` | Old prototype; expects the old 7-value packet | Obsolete |
+| `start_all.bat` | Old one-shot launcher (`VIDEO_MODE=udp` default) | Legacy |
 
 ---
 
@@ -45,7 +48,9 @@ Legacy Windows runtime: `C:\Users\VRX 226\test\` (prefer `cursor-test\windows\`)
 | `orin_camera_sender_udp.py` | ZED → chunked JPEG/UDP → Windows | **Primary video** |
 | `orin_camera_sender.py` | ZED → JPEG/TCP 9001–9003 | Legacy (`CAMERA_TRANSPORT=tcp`) |
 | `orin_vehicle_controller.py` | UDP 5006 → Teensy; default `--duty` | Working |
-| `imu_bridge.py` | IMU → Windows UDP 5007 @ 50 Hz | Working script |
+| `imu_bridge.py` | Xsens + wheel odom → chair cues, UDP 5007 (25 Hz via `relay_teleop/run_imu_bridge.sh`) | **In use** |
+| `relay_teleop/` | Current teleop: `start_all.sh` / `stop_all.sh` and run scripts (MediaMTX, ZEDs, WebRTC, rate controller, actuator, bridge, Xsens, IMU bridge) | **In use** — see `docs/START_TELEOP.md` |
+| `orin_simchair_ros_bridge.py` + `simchair_ackermann.py` | UDP 5006 → `/avros/actuator_command`, gear modes diff / Ackermann | **In use** |
 | `simchair_drive.sh` | Borrow Teensy; restart `avros-webui` on exit | Working |
 | `cam_probe.py` | Camera probe utility | Optional |
 
@@ -82,6 +87,7 @@ JPEG_QUALITY = 70  # when re-encoding raw
 
 - Packet 44 bytes LE: `seq:u32, t_ms:u64, ax,ay,az,gx,gy,gz,roll,pitch`  
 - Default Windows IP `100.91.25.107`, port **5007**  
+- `ax`/`ay` are motion cues (wheel-encoder accel, speed × yaw rate), not raw accelerometer; `--cue imu` sends raw. `--hz` sets the rate (25 in `run_imu_bridge.sh`; `imu_haptic_receiver` assumes 25).  
 
 ### ZED launch requirements
 
