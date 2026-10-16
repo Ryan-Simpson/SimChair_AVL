@@ -10,7 +10,7 @@ __pycache__/
 windows/dbxLive64.dll
 windows/SDL2.dll
 # too big for GitHub
-docs/deliverables/office/SimChair_DemoVid.mp4
+docs/archive/2026-08_cohort/deliverables/office/SimChair_DemoVid.mp4
 # windows/dbox CMake build output
 windows/dbox/build/
 # local run logs and backups (latency study, dated exe backups)

@@ -1,139 +1,73 @@
 # Marvin Sim Chair Teleop
 
-Remote-drive **Marvin**, a Jetson Orin go-kart, from a Windows D-BOX sim chair. The operator gets three camera views, a racing wheel, and motion cueing — over Tailscale, without taking over the car’s perception stack.
+Remote-drive **Marvin**, a Jetson Orin go-kart, from a Windows D-BOX sim chair.
+The operator gets three live camera views in a browser, a racing wheel, and
+motion cues in the chair. Everything runs over Tailscale through a peer relay,
+so it works with Marvin on cellular.
 
 Cal Poly Pomona · Autonomous Vehicles Laboratory (AVL)
+
+**How to start it: [docs/START_TELEOP.md](docs/START_TELEOP.md)**
 
 ---
 
 ## How it fits together
 
 ```
-Sim chair (Windows)                         Marvin (Jetson Orin)
-wheel / pedals / D-BOX                      ZED X ×3 · Teensy · Spark MAX
-        │                                            │
-        │  UDP 5006  steer / throttle / brake        │
-        ├──────────────────────────────────────────►│  ROS → /avros/actuator_command
-        │                                            │
-        │  H.265 30000  (front)                      │
-        │  JPEG  9001–9003  (fallback)               │
-        │◄──────────────────────────────────────────┤  percept-stack owns cameras
-        │                                            │
-        │  UDP 5007  IMU → chair                     │
-        │◄──────────────────────────────────────────┘
+Sim chair PC (Windows, 100.91.25.107)            Marvin (Jetson AGX Orin, 100.93.121.3)
+wheel / pedals / D-BOX                           ZED X ×3 · Xsens · Teensy · Spark MAX
+                                                 AT&T cellular (Sierra AirLink router)
+
+simchair_sender_dbox.exe --no-dbox
+   ── UDP 5006 steer/throttle/brake/gear ──►     orin_simchair_ros_bridge.py
+                                                   → /avros/actuator_command → actuator_node → Teensy
+
+Chrome: multicam_viewer.html (:8090)
+   ◄── WebRTC (WHEP :8889) ─────────────────     ZED → avros_webrtc (NVENC H.264) → MediaMTX
+                                                   rate_controller adapts the bitrate
+
+imu_haptic_receiver.exe → D-BOX
+   ◄── UDP 5007 motion cues, 25 Hz ─────────     Xsens + wheel odom → imu_bridge.py
+
+        both ends ⇄ Tailscale peer relay (Vultr LA, 66.42.96.149:4500)
 ```
 
-The car already runs `percept-stack` (cameras, Argus, costmap) and WebUI. This repo **attaches** to that stack. It does not relaunch ZEDs.
+## Status (2026-10-16)
 
-| | Operator station | Vehicle |
-|---|---|---|
-| Host | Windows sim chair `100.91.25.107` | Jetson Orin `dinosaur` `100.93.121.3` |
-| Input | Thrustmaster wheel + pedals | Teensy 4.1 → Spark MAX |
-| Video | Three monitors (Surround 0 / 1920 / 3840) | ZED X front / left / right |
-| Motion | D-BOX chair | Xsens IMU |
-
----
-
-## Status
-
-Current setup (2026-10-14): **relay teleop**. How to start it: [docs/START_TELEOP.md](docs/START_TELEOP.md).
-
-| Path | State |
-|------|--------|
-| Relay teleop: 3× ZED → NVENC H.264 → MediaMTX WebRTC, browser viewer | Working over cellular via the Tailscale peer relay, with adaptive bitrate. Full rate at night (~2.7 Mbps up); daytime cell capacity can drop to ~250 kbps. `jetson/relay_teleop/start_all.sh`. |
-| Wheel → `/avros/actuator_command` | Working. Paddle gears: 1 = differential, 2 = Ackermann, 0/3 = off. |
-| IMU → D-BOX | Working and approved in the chair 2026-10-14: wheel-encoder accel + gyro yaw cues → washout → chair. `windows/start_chair.bat`, details in [windows/dbox/README.md](windows/dbox/README.md). |
-| Front H.265 (ZED native) | Older path. Superseded by relay teleop. |
-| Three H.265 streams over Tailscale | Older path. Freezes / smears under load. |
-| JPEG/UDP ×3 | Older fallback. |
-
-**Do not** run JPEG and H.265 at the same time. **Do not** run `orin_launch_all.sh` while percept is up.
-
----
-
-## Quick start
-
-Confirm Tailscale is **direct** (`tailscale ping 100.93.121.3`), not a DERP relay.
-
-### Jetson
-
-```bash
-conda deactivate
-unset ROS_DOMAIN_ID DISPLAY
-source /opt/ros/humble/setup.bash
-source /home/dinosaur/IGVC/install/setup.bash
-export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-export CYCLONEDDS_URI=file:///home/dinosaur/IGVC/install/avros_bringup/share/avros_bringup/config/cyclonedds.xml
-
-bash ~/Documents/SimChair_Teleop/simchair_enable_zed_streams.sh --front-only
-bash ~/Documents/SimChair_Teleop/simchair_attach.sh --ros-drive --no-cam
-```
-
-### Windows (Command Prompt, not PowerShell)
-
-```bat
-cd /d "C:\Users\VRX 226\simchair_teleop\windows"
-set VIDEO_MODE=zed
-start_all.bat
-```
-
-Mode **0** = park, **1** = drive.
-
-JPEG fallback: omit `VIDEO_MODE` and run `simchair_attach.sh --ros-drive` (no `--no-cam`). Never mix that with H.265.
-
-### Stop (leave the car healthy)
-
-```bash
-tmux kill-session -t simchair 2>/dev/null || true
-pkill -f orin_simchair_ros_bridge 2>/dev/null || true
-bash ~/Documents/SimChair_Teleop/simchair_enable_zed_streams.sh --off
-```
-
-Physical E-stop latches the Spark MAXes. A software restart will not clear it.
-
----
+| Part | State |
+|---|---|
+| Drive | Working. Paddle gears: 1 = differential, 2 = Ackermann, 0/3 = off. Arm with park (0). Actuator max 0.40 m/s. |
+| Video, 3 cameras | Working over cellular. 480×300; front 7.5 fps, sides 15 fps; adaptive bitrate (0.125–1.8 Mbps). 2026-10-16 late-morning test: 90 min, all 3 cameras, outdoors. |
+| IMU → chair | Working, driver-approved 2026-10-14: wheel-encoder accel + speed × yaw + yaw → washout → D-BOX. |
+| Cellular | The limit. Night 10–13 Mbps up; busy daytime can drop to ~250 kbps, with occasional 1-minute stalls; dead spots inside the building. If 3 cameras struggle, restart with `FRONT_ONLY=1`. Numbers in [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md). |
 
 ## Repo layout
 
 | Path | What it is |
-|------|------------|
-| [`windows/`](windows/) | Runtime on the sim chair. Launch from here (`start_all.bat`). |
-| [`jetson/`](jetson/) | Scripts mirrored to `~/Documents/SimChair_Teleop/` on the kart. |
-| [`docs/`](docs/) | Ops notes, architecture, handoff. |
-| [`CARS_Poster/`](CARS_Poster/) | Symposium poster materials. |
-| [`_archive/`](_archive/) | Old experiments. Not day-to-day. |
+|---|---|
+| [`jetson/relay_teleop/`](jetson/relay_teleop/) | Marvin side: `start_all.sh` / `stop_all.sh` and one `run_*.sh` per tmux window |
+| `jetson/orin_simchair_ros_bridge.py`, `simchair_ackermann.py` | UDP 5006 → `/avros/actuator_command`, diff / Ackermann mapping |
+| `jetson/imu_bridge.py` | Xsens + wheel odom → chair cues, UDP 5007 |
+| [`windows/`](windows/) | Chair side: `start_chair.bat`, `simchair_sender_dbox.exe`, `imu_haptic_receiver.exe`, `multicam_viewer.html` |
+| [`windows/dbox/`](windows/dbox/) | C++ sources for both exes (CMake, D-BOX SDK) |
+| `windows/latency/` | Latency study: log analysis and router signal poller |
+| [`docs/`](docs/README.md) | Current docs |
+| [`legacy/`](legacy/README.md) | Old JPEG / H.265-era scripts, not used |
+| [`docs/archive/`](docs/archive/README.md) | Out-of-date docs, cohort deliverables, poster |
 
-Edit Jetson scripts here, then copy them to the kart (HTTP from the Windows tree is the usual path if SSH keys are missing).
-
----
+Edit here, then copy changed Jetson files to `~/SimChair_AVL/` on Marvin with
+`scp` (same layout; it's a copy, not a git clone). The viewer page is served
+from Marvin's copy, so copy `windows/multicam_viewer.html` too.
+`windows\dbxLive64.dll` and `SDL2.dll` are not in git; keep them next to the exes.
 
 ## Hard rules
 
-1. **`percept-stack` owns the cameras.** Attach only. Never `orin_launch_all.sh` while it is running.
-2. **One Teensy owner.** Prefer `actuator_node` via `--ros-drive`. Do not also run `orin_vehicle_controller`.
-3. **Car ROS domain is 0.** `unset ROS_DOMAIN_ID` — bashrc often injects `42`.
-4. **One video path.** H.265 *or* JPEG, never both.
-5. **Do not edit `/home/dinosaur/IGVC/`** unless the lab agrees. Stream ports already live in the ZED yaml.
-6. **Do not kill** percept tmux `costmap_rgb`. Killing `rviz` / `viz` for bandwidth is fine.
-
----
-
-## Docs
-
-Start with the live map, then go deeper as needed:
-
-- [Session handoff](docs/SESSION_HANDOFF_CONTEXT_LOSS.md) — current paths, ports, open issues
-- [Percept + sim chair](docs/PERCEPT_STACK_AND_SIMCHAIR.md) — attach vs launch, WebUI, Teensy
-- [H.265 bring-up](docs/H265_BRINGUP.md) — ZED native streams
-- [Video architecture prompt](docs/FRESH_CHAT_VIDEO_PROMPT.md) — why 3-cam Tailscale fails; next design
-- [Known issues](docs/KNOWN_ISSUES_AND_HISTORY.md) — what we already tried
-- [All docs](docs/README.md)
-
-`LAUNCH.txt` at the repo root is the short ops cheat sheet.
-
----
+1. **One Teensy owner.** The relay stack starts its own `actuator_node`. If the team's WebUI launch (`avros_bringup webui.launch.py`) is running, it has one too: stop it first, with the team's OK.
+2. **One viewer.** Every extra viewer tab sends the video again over the cellular upload.
+3. **Don't edit `/home/dinosaur/IGVC/`** (team code).
+4. **Physical E-stop latches the Spark MAXes.** A software restart won't clear it.
 
 ## Team
 
-Ryan Simpson (lead), Tyler Carrasco, Yi-Szen Tang, Kevin Xu, Justin Dang  
+Ryan Simpson (lead), Tyler Carrasco, Yi-Szen Tang, Kevin Xu, Justin Dang
 Mentor: Dr. Behnam Bahr

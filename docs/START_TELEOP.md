@@ -25,6 +25,14 @@ Options go before `bash`:
 
 Example: `ssh dinosaur@100.93.121.3 "START_SCALE=0.6 bash ~/SimChair_AVL/jetson/relay_teleop/start_all.sh"`
 
+Busy daytime link (side cameras keep pausing, queue spikes): restart with
+`FRONT_ONLY=1 START_SCALE=0.4 MAX_SCALE=0.6`.
+
+Before starting, check that the team's WebUI launch isn't running
+(`ssh dinosaur@100.93.121.3 "pgrep -af webui.launch"`). It has its own
+actuator_node, and two nodes on the Teensy fight. Stop it with the team's OK;
+they restart it with `cd ~/IGVC_ROS2 && ros2 launch avros_bringup webui.launch.py`.
+
 ## 2. Start the chair side
 
 Double-click `C:\Users\VRX 226\simchair_teleop\windows\start_chair.bat`

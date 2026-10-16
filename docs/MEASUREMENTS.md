@@ -168,6 +168,9 @@ Run once at night and once in the daytime; note the time of day and weather.
 | Baseline day (A, 3 cams) | 10-15 16:47–16:56, sunny, campus busy, parked outside | not measured (parked outside) | 23 / 188 / 3,439 / 6,509 ms (startup spike; after 2 min: 22 / 102 / 519 / 1,492) | 4.6% | front 7.3 fps, 179 kbps, 37 freezes; sides 4 fps avg but < 3 fps 75% of seconds | not logged | not logged | Controller sawtooth: climbs to 0.8–1.3 Mbps, queue spikes, sides paused. eno1 tx is inflated by ~1 Mbps of local DDS multicast (239.255.0.1); real cellular = tailscale0 (~250 kbps) |
 | Baseline day (B, front only, MAX_SCALE 0.8) | 10-15 16:57–17:03 | not measured | 22 / 352 / 6,008 / 36,342 ms; without the outage 17–23 / 40–141 / 274–569 / 857 | 8.8% | 6.6 fps, 226 kbps, 35 freezes, jb 223 ms; viewer auto-cutoff fired | not logged | not logged | One 59 s cell outage at the 125 kbps floor (queue peaked at 36 s): the cell, not our rate |
 
+| Day (10-16, 3 cams, 90 min) | 10-16 10:59–12:30, outdoors, driving | not measured | Per 5 min: median +20–40 ms over that stretch's floor, p99 mostly < 1 s, a few 2–5 s spikes (whole-run stats unusable: ~2.95 s Jetson clock step ~25 min in, after a reboot) | — | front 7.4 fps, 404 kbps, 90 freezes; sides 13.7 fps, ~250 kbps, ~320 freezes each, < 3 fps 1–8% of seconds | not logged | not logged | Sides paused in 90 of 1,100 controller ticks. Driver: "the test went amazing" |
+| Indoors (10-15 17:04–17:15, front only) | lab, Marvin moved toward the chair | ~4.2 s (1 reading, link clogged) | Clean (~20 ms) while parked; 1–2 min stalls up to 26–32 s each time Marvin moved; near the chair it can't hold 125 kbps | — | viewer auto-cutoff 3× | not logged | not logged | Cellular dead spot near the chair: measure glass-to-glass outdoors |
+
 ### A/B (Step 2–3 changes, each against the baseline of the same time of day)
 
 | Change | Run | Glass-to-glass | Queue p90 / max | Front fps / freezes | Keep? |

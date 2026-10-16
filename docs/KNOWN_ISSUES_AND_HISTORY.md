@@ -4,16 +4,9 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Sim chair wheel/pedal input | ✅ Working | simchair_sender_dbox.exe via SDL2 |
-| UDP control to Jetson | ✅ Working | Port 5006, Tailscale |
-| Vehicle controller → Teensy | ✅ Working | Default **`--duty`** (`UL/UR`); WebUI also drives |
-| JPEG camera streaming | ✅ Working | UDP chunked JPEG 9001–9003; **do not run with H.265** |
-| ZED H.265 front stream | ✅ Working | Ports 30000; `py -3.8` receiver; good FPS if link clean |
-| ZED H.265 ×3 over Tailscale | ⚠️ Fragile | Unique ports OK; corrupt chunks / freezes under drive |
-| Wheel via ROS bridge | ✅ Working | `--ros-drive` / `simchair_launch_clean.sh`; close Chrome stick |
+| Sim chair wheel/pedal input | ✅ Working | simchair_sender_dbox.exe via SDL2, `--no-dbox` |
+| Drive via ROS bridge | ✅ Working | UDP 5006 → `orin_simchair_ros_bridge.py` → actuator_node (the only Teensy owner) |
 | D-BOX SDK integration | ✅ Working | DBoxManager class, async streaming |
-| ZED camera launch | ✅ Working | Owned by **percept-stack**; do not dual-launch |
-| WebUI restore after sim chair | ✅ Working | Restart full `avros-webui` service |
 | Relay teleop video (3× WebRTC) | ✅ Working (2026-10) | NVENC H.264 → MediaMTX, Tailscale peer relay, adaptive bitrate; `relay_teleop/start_all.sh` |
 | Ackermann / gear select | ✅ Working (2026-10-13) | Paddles: 1 = diff, 2 = Ackermann, 0/3 = off; bridge clips to actuator max 0.40 m/s |
 | IMU → D-BOX chair | ✅ Working (2026-10-14) | Encoder accel + gyro yaw cues → `imu_haptic_receiver.exe`; `windows/start_chair.bat` |
@@ -22,7 +15,8 @@
 
 | Feature | Status | Blocker |
 |---------|--------|---------|
-| Cellular capacity | 🔄 Open | Night 10–13 Mbps up, daytime ~250 kbps; 2026-10-14 link broke near the building on the return leg — dead zone or busy cell? Repeat the route logging router RSRP/SINR |
+| Cellular capacity | 🔄 Open | Night 10–13 Mbps up. Busy daytime (10-15 ~16:45): fine ~90% of the time, but 3 cameras sawtooth and there was one 59 s stall even at the 125 kbps floor. 10-16 late morning: 3 cameras held for 90 min. Dead spots inside the building (1–2 min stalls each time Marvin moved). Router RSRP/SINR not logged yet. Numbers in MEASUREMENTS.md |
+| Latency study Steps 2–3 | 🔄 Open | Encoder vbv-size / intra-refresh, viewer jitterBufferTarget, faster rate controller. Glass-to-glass still unmeasured |
 | Closed-loop velocity drive | 🔄 Open | `--velocity` often Sparks purple; use duty / WebUI path |
 
 ---
@@ -134,6 +128,9 @@ Track judder is ~0.8 m/s² (peaks 3–5) while Marvin's real speed changes are ~
 
 ## Architecture Decisions
 
+Mostly from the JPEG era (July–September) and kept as history; the current
+video design and why is in [RELAY_TELEOP_2026-10-10.md](RELAY_TELEOP_2026-10-10.md).
+
 ### Why JPEG over TCP instead of GStreamer RTSP
 GStreamer RTSP (H.264) was attempted repeatedly but produced corrupted bitstreams due to Python thread safety issues with GstRtspServer. JPEG-over-TCP was simpler and worked reliably at 15fps. GStreamer is still being pursued for quality improvement.
 
@@ -159,18 +156,17 @@ Conda is installed on the Jetson and intercepts the `python3` command, breaking 
 
 ## Pending Next Steps (Priority Order)
 
-1. **Motors** — re-verify spin / Spark / meas RPM (WebUI + sim-chair)
-2. **Cellular dead zone vs busy cell** — repeat the lab → outside → back route logging router RSRP/SINR (IMU → D-BOX is done, 2026-10-14)
-3. **Video quality** — JPEG works; optional `pub_downscale_factor:=1.0` / HD for stills; H.265 later
-4. **Latency measurement** — target under 150ms glass-to-glass when on direct Tailscale
-5. **Keep docs/scripts in sync** — edit in `cursor-test\jetson\`, push to `~/Documents/SimChair_Teleop/`
+1. **Glass-to-glass outdoors**: a laptop showing `http://100.93.121.3:8090/?clock=1` ~1 m in front of the front ZED (indoors near the chair is a cellular dead spot)
+2. **Latency study Step 2**: encoder vbv-size + intra-refresh, viewer `jitterBufferTarget = 0`; A/B against the baselines in MEASUREMENTS.md
+3. **Router signal log** during a drive (`windows/latency/router_poll.js`) to tell dead zones from a busy cell
+4. **analyze_latency.py**: handle a Jetson clock step (seen 10-16 ~25 min after a reboot) before trusting whole-run queue stats
+5. **Motors**: re-check the degradation issue above
 
 ---
 
 ## Team Constraints
 
 - **NEVER modify files inside `/home/dinosaur/IGVC/`** — shared IGVC competition code
-- Windows launch dir: `C:\Users\VRX 226\simchair_teleop\windows\` (git working copy, branch `feature/bridge-watchdog`; legacy: `cursor-test\windows\`)
-- Jetson teleop dir: `~/SimChair_AVL/` (scp-deployed copy of this repo; legacy: `~/Documents/SimChair_Teleop/`)
-- iptables rules don't persist across reboots — must re-run every session (or use `orin_launch_all.sh`; opens TCP+UDP 9001–9003)
-- SCP/SSH key may be missing — use Tailscale HTTP (`python -m http.server`) to move files
+- Windows launch dir: `C:\Users\VRX 226\simchair_teleop\windows\` (git working copy, `main`)
+- Jetson teleop dir: `~/SimChair_AVL/` (scp-deployed copy of `jetson/` and the viewer page, not a git clone)
+- The team's WebUI launch (`avros_bringup webui.launch.py`) runs its own actuator_node: stop it, with their OK, before `start_all.sh`

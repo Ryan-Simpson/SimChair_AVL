@@ -64,7 +64,7 @@ Check from the sim chair: `tailscale ping 100.93.121.3` → expect
 `via peer-relay(66.42.96.149:4500:vni:…)` in ~40–50 ms.
 
 > This supersedes the "must be **direct**" checks in
-> [NETWORK_OPTIONS.md](NETWORK_OPTIONS.md) and [MEASUREMENTS.md](MEASUREMENTS.md)
+> [NETWORK_OPTIONS.md](archive/NETWORK_OPTIONS.md) and [MEASUREMENTS.md](MEASUREMENTS.md)
 > for the campus ↔ cellular case: direct is impossible there; **peer-relay is the target**.
 
 ### Measured (2026-10-09, kart stationary, 20 Hz UDP echo, 3-min rounds)

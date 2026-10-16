@@ -1,88 +1,93 @@
 # System Architecture
 
-**Updated:** 2026-08-07
+**Updated:** 2026-10-16 (relay teleop). The older JPEG / H.265 / direct-serial
+flows are described in [archive/](archive/README.md).
 
-## Control Flow (Windows → Kart)
-
-```
-Thrustmaster Wheel/Pedals (SDL2)
-        ↓
-simchair_sender_dbox.exe (Windows)
-  - UDP CSV: "steering,throttle,brake,mode\n"
-  - mode: 0=stop, 1=drive
-        ↓
-Tailscale VPN (UDP port 5006)
-        ↓
-orin_vehicle_controller.py (Jetson)
-  - Default: open-loop duty  UL{x} UR{y}
-  - Optional: --velocity     L{rpm} R{rpm}
-        ↓
-Teensy 4.1 (/dev/ttyACM0 @ 115200)
-        ↓
-REV Spark MAX → go-kart motors
-```
-
-**Ownership:** WebUI `actuator_node` **or** `orin_vehicle_controller` — never both.  
-See [CONTROL_PROTOCOL.md](CONTROL_PROTOCOL.md).
-
-## Video Flow (Kart → Windows) — primary
+## Network
 
 ```
-ZED X GMSL (front, left, right)
-        ↓
-ROS2 raw Image (prefer) or /compressed
-        ↓
-orin_camera_sender_udp.py (Jetson)
-  - Resize to 1280×720, JPEG q≈85, ~30 fps
-  - Chunk into ≤1200-byte UDP datagrams (magic MJPG)
-        ↓
-Tailscale VPN (UDP ports 9001 / 9002 / 9003)
-        ↓
-windows_camera_receiver_udp.py (Windows)
-  - Reassemble chunks → JPEG decode
-  - OpenCV main thread; windows at x=0, 1920, 3840
+Sim chair PC 100.91.25.107 ⇄ Tailscale peer relay (Vultr LA, 66.42.96.149:4500) ⇄ Marvin 100.93.121.3
+                                                                                 └ AT&T cellular, Sierra AirLink 192.168.13.31
 ```
 
-**Legacy:** `orin_camera_sender.py` + TCP + `windows_camera_receiver.py` (~15 fps).  
-**Experimental:** GStreamer RTP H.264 / ZED native stream.
+On campus ↔ cellular Tailscale can't go direct, and DERP added ~100 ms, so
+both ends use our own peer relay (control RTT ~38 ms median). Everything below
+shares Marvin's cellular **upload**, which is the bottleneck: when we send more
+than the cell carries, the modem queues instead of dropping, and video, drive
+replies and IMU packets all arrive late together.
+Details: [RELAY_TELEOP_2026-10-10.md](RELAY_TELEOP_2026-10-10.md).
 
-## Haptic Feedback Flow
+## Drive (chair → Marvin)
 
-Working since 2026-10-14 (`windows/start_chair.bat`):
+```
+Thrustmaster wheel/pedals (SDL2)
+        ↓
+simchair_sender_dbox.exe --no-dbox     UDP 5006 "steering,throttle,brake,mode", ~20 Hz
+        ↓
+orin_simchair_ros_bridge.py            gear mode: paddle 1 = diff, 2 = Ackermann, 0/3 = off
+  arm with park (0); newest packet only (stale bursts after a stall are dropped)
+        ↓
+/avros/actuator_command
+        ↓
+actuator_node (the only Teensy owner) → Teensy 4.1 → Spark MAX → motors
+  max 0.40 m/s
+```
+
+## Video (Marvin → chair)
+
+```
+ZED X ×3 (GMSL)  run_zed.sh by serial
+        ↓  /<cam>/zed_node/rgb/color/rect/image
+avros_webrtc webrtc_node ×3           NVENC H.264 CBR, 480×300; front 7.5 fps, sides 15 fps
+  bitrate = base × /webrtc/bitrate_scale
+        ↓  RTSP :8554
+MediaMTX (stock)                      WebRTC / WHEP :8889
+        ↓  Tailscale
+Chrome: multicam_viewer.html          served from Marvin :8090; one viewer only
+  auto-cutoff if the front RTT > 2 s or frames stall for 6 s
+```
+
+`rate_controller` pings the chair PC 5×/s and sets `/webrtc/bitrate_scale`
+(0.25–1.5 of 1.2 Mbps total; front 500 kbps, sides 350 kbps each at 1.0). If the
+link is still clogged at the floor it pauses the side cameras, leaving the
+front at ~125 kbps.
+
+## Chair motion (Marvin → chair)
 
 ```
 Xsens MTi-680G /imu/data (100 Hz) + /filter/free_acceleration
 /wheel_odom (SPARK-measured motor speed, 20 Hz)
         ↓
-jetson/imu_bridge.py (relay_teleop/run_imu_bridge.sh) → UDP 44-byte packet @ 25 Hz, port 5007
+imu_bridge.py → UDP 5007, 44-byte packet @ 25 Hz
   ax = d/dt wheel speed, ay = speed × gyro yaw rate (blended with Xsens accel only
-  while they agree), az = Xsens gravity-free z, gz = gyro yaw rate
+  while they agree), az = Xsens gravity-free z, gz = gyro yaw rate,
+  t_ms = Jetson wall clock at send
         ↓  Tailscale
-windows/imu_haptic_receiver.exe (source windows/dbox/imu_receiver)
+imu_haptic_receiver.exe (source windows/dbox/imu_receiver)
   washout: pitch from ax, roll from ay + yaw rate; fast lean-in, slow release;
   heave / engine rumble / ground tilt off; ramp to neutral after 500 ms of no packets
+  logs arrival − t_ms to windows\logs\imu_owd_*.csv (upload queue signal)
         ↓
 D-BOX LiveMotion (APP_KEY "CalPolyPomonaDevSim"), 50 Hz
 ```
 
-`simchair_sender_dbox.exe --no-dbox` drives Marvin without moving the chair.
-Without the flag the sender instead rocks the chair from the driver's own inputs
-(the older behaviour); only one program can own the chair. Raw accelerometer
-cueing was tried first and rejected: skid-steer track judder swamps Marvin's real
-accelerations (see `windows/dbox/README.md`).
+`simchair_sender_dbox.exe` without `--no-dbox` instead rocks the chair from the
+driver's own inputs (the older behaviour); only one program can own the chair.
+Raw accelerometer cueing was rejected: skid-steer track judder swamps Marvin's
+real accelerations (see `windows/dbox/README.md`).
 
-## ROS2 Environment (Jetson)
+## ROS environment (Marvin)
+
+`jetson/relay_teleop/env.sh`, sourced by every run script:
 
 ```bash
-unset DISPLAY   # never export DISPLAY=
-source /home/dinosaur/IGVC/install/setup.bash
+unset ROS_DOMAIN_ID DISPLAY        # domain 0, same as the WebUI; never export DISPLAY=
+source /opt/ros/humble/setup.bash
+source ~/IGVC/install/setup.bash
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-export CYCLONEDDS_URI=file:///home/dinosaur/IGVC/install/avros_bringup/share/avros_bringup/config/cyclonedds.xml
-export ROS_DOMAIN_ID=42
+export CYCLONEDDS_URI=file://$HOME/IGVC/install/avros_bringup/share/avros_bringup/config/cyclonedds.xml
 ```
 
-**CRITICAL:** Use `/usr/bin/python3` (conda hijacks `python3`).  
-**ZED:** `publish_tf:=true` `publish_urdf:=true` + serials — see `LAUNCH_PROCEDURE.md`.  
-**Never modify** `/home/dinosaur/IGVC/`.
-
-**Script locations:** Jetson `~/SimChair_AVL/` · Windows `C:\Users\VRX 226\simchair_teleop\windows\` (legacy: `~/Documents/SimChair_Teleop/`, `cursor-test\windows\`).
+Use `/usr/bin/python3` (conda hijacks `python3`). Don't modify `~/IGVC`.
+DDS multicast (239.255.0.1) shows up as ~1 Mbps on `eno1` but stays on the
+kart LAN; the cellular upload is what `tailscale0` sends.
