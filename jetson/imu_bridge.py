@@ -5,6 +5,11 @@ Xsens IMU → UDP binary telemetry to Windows @ 50 Hz.
 Packet (44 bytes, little-endian):
   seq:u32, t_ms:u64, ax,ay,az,gx,gy,gz,roll,pitch : float32  (8 floats)
 
+t_ms is the Jetson wall clock (ms since epoch) when the packet is sent. The
+chair PC logs arrival minus t_ms; the change from the run's minimum is the
+one-way queueing delay on Marvin's cellular upload, which the video shares.
+(It used to be the Xsens header stamp, which is GNSS time and wrong indoors.)
+
 ax/ay/az are motion cues, not raw accelerometer, because skid-steer track
 judder swamps Marvin's real 0.3 m/s^2 accelerations (2026-10-14 drive):
   ax = d/dt of /wheel_odom speed      (forward speed-up +, braking -)
@@ -154,7 +159,6 @@ class ImuBridge(Node):
     def _send(self, msg: Imu):
         q = msg.orientation
         roll, pitch = quat_to_roll_pitch(q.x, q.y, q.z, q.w)
-        t_ms = msg.header.stamp.sec * 1000 + msg.header.stamp.nanosec // 1_000_000
         if self.free_accel is not None and time.monotonic() - self.free_accel_t < FREE_ACCEL_STALE_S:
             acc = self.free_accel
             self.tx_free += 1
@@ -174,7 +178,7 @@ class ImuBridge(Node):
         packet = struct.pack(
             PACKET_FMT,
             self.seq,
-            t_ms,
+            int(time.time() * 1000),
             ax,
             ay,
             az,

@@ -33,6 +33,11 @@
   .cam video { width: 100%; height: 100%; object-fit: contain; background: var(--bg); }
   .hud { position: absolute; bottom: 0; left: 0; background: var(--bar); padding: 3px; }
   .hud.warn { color: var(--warn); }
+  /* ?clock=1: glass-to-glass test. Point the front ZED at this clock; a screenshot
+     then holds the live clock and the camera's delayed copy of it. */
+  #g2g { position: fixed; z-index: 10; left: 50%; bottom: 4vh; transform: translateX(-50%);
+         background: #fff; color: #000; font: bold 11vh monospace; padding: 0 2vh;
+         letter-spacing: 0.05em; display: none; }
 </style>
 </head>
 <body>
@@ -47,6 +52,7 @@
   <div class="cam front"><video id="v_zed_front" autoplay muted playsinline></video><div class="hud" id="h_zed_front">zed_front</div></div>
   <div class="cam"><video id="v_zed_right" autoplay muted playsinline></video><div class="hud" id="h_zed_right">zed_right</div></div>
 </div>
+<div id="g2g"></div>
 <script>
 // Front first, then sides 4 s apart (matches start_all.sh staggering).
 const CAMS = ['zed_front', 'zed_left', 'zed_right'];
@@ -156,6 +162,18 @@ document.getElementById('save').onclick = () => {
   a.click();
 };
 if (location.protocol !== 'file:') start();
+
+// Glass-to-glass clock: seconds.milliseconds of the PC wall clock, redrawn every frame.
+if (new URLSearchParams(location.search).get('clock') === '1') {
+  const el = document.getElementById('g2g');
+  el.style.display = 'block';
+  const tick = () => {
+    const ms = Date.now() % 100000;  // SS.mmm with two digits of tens-of-seconds
+    el.textContent = (ms / 1000).toFixed(3).padStart(6, '0');
+    requestAnimationFrame(tick);
+  };
+  tick();
+}
 </script>
 </body>
 </html>

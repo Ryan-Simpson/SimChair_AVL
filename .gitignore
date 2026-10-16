@@ -13,3 +13,8 @@ windows/SDL2.dll
 docs/deliverables/office/SimChair_DemoVid.mp4
 # windows/dbox CMake build output
 windows/dbox/build/
+# local run logs and backups (latency study, dated exe backups)
+windows/logs/
+windows/*_20??-??-??.exe
+# local copy of docs/START_TELEOP.md next to the launcher
+windows/START_TELEOP.md

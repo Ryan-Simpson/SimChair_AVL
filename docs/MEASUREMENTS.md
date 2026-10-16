@@ -127,6 +127,55 @@ _Fill after full simultaneous soak test._
 
 ---
 
+## Relay teleop video latency study (started 2026-10-15)
+
+Goal: find where the video lag comes from before changing anything (Step 1),
+then A/B each fix against these numbers (Steps 2–3). Video path: 3× ZED X →
+avros_webrtc NVENC H.264 → MediaMTX → Chrome WHEP, over the Tailscale peer
+relay on Marvin's AT&T cellular. Tools are in `windows/latency/`.
+
+### What each run records
+
+| Signal | Source | Tells us |
+|---|---|---|
+| Glass-to-glass | Viewer `?clock=1` clock filmed by the front ZED; Chrome tab screenshots, live − filmed time | Total delay you see |
+| Upload queue | `imu_haptic_receiver.exe` → `windows\logs\imu_owd_*.csv` (arrival − Jetson send time of each 25 Hz IMU packet, minus the run's minimum) | The cellular upload queue the video shares, with no clock sync |
+| Per-camera fps, kbps, freezes, jitter buffer | Viewer **Save stats** → `marvin_video_stats_*.json` | What the viewer actually got |
+| Upload rate, ping, GPS | Marvin `jetson/relay_teleop/drive_log.py` → `/tmp/drivelog/marvin_1hz.csv` (start commands in its header); rate controller and encoder logs via `tmux pipe-pane` | What Marvin sent, controller decisions |
+| RSRP / SINR / cell ID | `windows/latency/router_poll.js` in the logged-in ACEmanager tab, every 5 s | Signal vs congestion |
+
+Combine: `python windows/latency/analyze_latency.py --owd … --viewer … --marvin … --router … --g2g …`
+
+### Procedure
+
+1. Start Marvin (`start_all.sh`) and the chair side (`start_chair.bat`); the IMU
+   receiver writes its delay log automatically.
+2. Open the viewer in Chrome as `http://100.93.121.3:8090/?clock=1` (the only viewer).
+3. Log into ACEmanager through the SSH tunnel and start `router_poll.js`.
+4. Glass-to-glass: Marvin parked facing the monitor, front ZED filming the
+   clock box. Take ≥ 20 Chrome screenshots a few seconds apart; read live and
+   filmed `SS.mmm` from each into `g2g.csv` (`sample,live,filmed`).
+5. Then drive the usual route (lab → outside → back) for the queue/signal log.
+6. Save stats in the viewer, stop everything, collect the logs, run the analysis.
+
+Run once at night and once in the daytime; note the time of day and weather.
+
+### Results
+
+| Run | Time | Glass-to-glass median / p90 | Queue median / p90 / p99 / max | >500 ms | Front fps / freezes | RSRP / SINR range | Cell IDs | Notes |
+|---|---|---|---|---|---|---|---|---|
+| Baseline night | | | | | | | | |
+| Baseline day (A, 3 cams) | 10-15 16:47–16:56, sunny, campus busy, parked outside | not measured (parked outside) | 23 / 188 / 3,439 / 6,509 ms (startup spike; after 2 min: 22 / 102 / 519 / 1,492) | 4.6% | front 7.3 fps, 179 kbps, 37 freezes; sides 4 fps avg but < 3 fps 75% of seconds | not logged | not logged | Controller sawtooth: climbs to 0.8–1.3 Mbps, queue spikes, sides paused. eno1 tx is inflated by ~1 Mbps of local DDS multicast (239.255.0.1); real cellular = tailscale0 (~250 kbps) |
+| Baseline day (B, front only, MAX_SCALE 0.8) | 10-15 16:57–17:03 | not measured | 22 / 352 / 6,008 / 36,342 ms; without the outage 17–23 / 40–141 / 274–569 / 857 | 8.8% | 6.6 fps, 226 kbps, 35 freezes, jb 223 ms; viewer auto-cutoff fired | not logged | not logged | One 59 s cell outage at the 125 kbps floor (queue peaked at 36 s): the cell, not our rate |
+
+### A/B (Step 2–3 changes, each against the baseline of the same time of day)
+
+| Change | Run | Glass-to-glass | Queue p90 / max | Front fps / freezes | Keep? |
+|---|---|---|---|---|---|
+| | | | | | |
+
+---
+
 ## How to Measure
 
 ### Glass-to-glass video latency
