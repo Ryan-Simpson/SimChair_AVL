@@ -33,6 +33,10 @@ Before starting, check that the team's WebUI launch isn't running
 actuator_node, and two nodes on the Teensy fight. Stop it with the team's OK;
 they restart it with `cd ~/IGVC_ROS2 && ros2 launch avros_bringup webui.launch.py`.
 
+The team's `lidar.launch.py` can stay up. It also runs the Xsens driver, so
+our `xsens` window exits right away ("No MTi device found", the port is in
+use); that's fine, because the IMU bridge reads the same `/imu/data`.
+
 ## 2. Start the chair side
 
 Double-click `C:\Users\VRX 226\simchair_teleop\windows\start_chair.bat`
